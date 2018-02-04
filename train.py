@@ -20,7 +20,7 @@ def train_fn(idx, args, shared_model, global_counter, optimizer):
     env = create_sc2_env(args.map_name)
 
     # TODO: implement shape and action_space
-    model = ActorCritic('env.shape', 'env.action_space')
+    model = ActorCritic('env.shape', 'env.action_space', args.lstm)
     model.train()
 
     state = env.reset()  # numpy array
@@ -47,10 +47,10 @@ def train_fn(idx, args, shared_model, global_counter, optimizer):
         # rollout, step forward n steps
         for step in range(args.num_forward_steps):
             if args.lstm:
-                policy_vb, value_vb, lstm_hidden_vb = model(
+                value_vb, policy_vb, lstm_hidden_vb = model(
                     get_state_vb(state), lstm_hidden_vb)
             else:
-                policy_vb, value_vb, lstm_hidden_vb = model(get_state_vb(state))
+                value_vb, policy_vb, _ = model(get_state_vb(state))
 
             # Entropy of a probability distribution is the expected value of - log P(X),
             # computed as sum(policy * -log(policy)) which is positive.
@@ -87,9 +87,9 @@ def train_fn(idx, args, shared_model, global_counter, optimizer):
         if not episode_done:
             # bootstrap from last state
             if args.lstm:
-                _, value_vb, _ = model(get_state_vb(state), lstm_hidden_vb)
+                value_vb, _, _ = model(get_state_vb(state), lstm_hidden_vb)
             else:
-                _, value_vb, _ = model(get_state_vb(state))
+                value_vb, _, _ = model(get_state_vb(state))
             R_ts = value_vb.data
 
         R_vb = Variable(R_ts)
