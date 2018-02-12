@@ -54,18 +54,24 @@ def main():
     for idx in range(args.num_processes):
         actor_thread = mp.Process(
             target=actor_fn, args=(idx, args, shared_model, global_counter, optimizer))
+        actor_thread.daemon = True
         actor_thread.start()
         processes.append(actor_thread)
 
     # start a thread for policy evaluation
     monitor_thread = mp.Process(
         target=monitor_fn, args=(args.num_processes, args, shared_model, global_counter))
+    monitor_thread.daemon = True
     monitor_thread.start()
     processes.append(monitor_thread)
 
     # wait for all processes to finish
-    for process in processes:
-        process.join()
+    try:
+        for process in processes:
+            process.join()
+    except KeyboardInterrupt:
+        for process in processes:
+            process.terminate()
 
 if __name__ == '__main__':
     main()
