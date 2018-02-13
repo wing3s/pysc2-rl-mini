@@ -2,8 +2,9 @@ import argparse
 
 import torch.multiprocessing as mp
 
-from envs import create_sc2_env
-from a3c import ActorCritic, SharedAdam
+from envs import create_sc2_minigame_env
+from model import ActorCritic
+from optim import SharedAdam
 from train import train_fn
 from monitor import monitor_fn
 
@@ -35,12 +36,12 @@ parser.add_argument('--map-name', default='FindAndDefeatZerglings', metavar='MAP
 def main():
     args = parser.parse_args()
 
-    env = create_sc2_env(args.map_name)
-
-    # critic
     # TODO: implement shape and action_space
-    shared_model = ActorCritic('env.shape', 'env.action_space')
-    shared_model.share_memory()
+    env = create_sc2_minigame_env(args.map_name)
+    with env:
+        # critic
+        shared_model = ActorCritic('env.shape', 'env.action_space')
+        shared_model.share_memory()
 
     optimizer = SharedAdam(shared_model.parameters(), lr=args.lr)
     optimizer.share_memory()
@@ -53,7 +54,7 @@ def main():
     # each actor_thread creates its own environment and trains agents
     for idx in range(args.num_processes):
         actor_thread = mp.Process(
-            target=actor_fn, args=(idx, args, shared_model, global_counter, optimizer))
+            target=train_fn, args=(idx, args, shared_model, global_counter, optimizer))
         actor_thread.daemon = True
         actor_thread.start()
         processes.append(actor_thread)
