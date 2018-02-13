@@ -1,0 +1,4 @@
+minigame:
+    step_mul: 8  # 180 APM
+    screen_resolution: 64  # at least 64^2 is recommended to be playable
+    minimap_resolution: 64
