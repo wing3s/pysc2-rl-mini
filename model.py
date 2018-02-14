@@ -6,11 +6,18 @@ from torch.nn.utils import weight_norm
 
 
 class ActorCritic(torch.nn.Module):
-    def __init__(self, num_inputs, action_space, enable_lstm=True):
+
+    def __init__(self,
+                 minimap_channels,
+                 screen_channels,
+                 info_size,
+                 screen_resolution,
+                 action_space,
+                 enable_lstm=True):
         super(ActorCritic, self).__init__()
         self.enable_lstm = enable_lstm
 
-        self.conv1 = nn.Conv2d(num_inputs, 32, 3, stride=2, padding=1)
+        self.conv1 = nn.Conv2d(minimap_channels, 32, 3, stride=2, padding=1)
         self.conv2 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
         self.conv3 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
         self.conv4 = nn.Conv2d(32, 32, 3, stride=2, padding=1)

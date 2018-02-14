@@ -2,7 +2,7 @@ import argparse
 
 import torch.multiprocessing as mp
 
-from envs import create_sc2_minigame_env
+from envs import GameInterfaceHandler
 from model import ActorCritic
 from optim import SharedAdam
 from train import train_fn
@@ -36,12 +36,16 @@ parser.add_argument('--map-name', default='FindAndDefeatZerglings', metavar='MAP
 def main():
     args = parser.parse_args()
 
-    # TODO: implement shape and action_space
-    env = create_sc2_minigame_env(args.map_name)
-    with env:
-        # critic
-        shared_model = ActorCritic('env.shape', 'env.action_space')
-        shared_model.share_memory()
+    game_intf = GameInterfaceHandler()
+    # critic
+    shared_model = ActorCritic(
+        game_intf.minimap_channels,
+        game_intf.screen_channels,
+        game_intf.action_space,
+        game_intf.screen_resolution,
+        game_intf.action_space,
+        args.lstm)
+    shared_model.share_memory()
 
     optimizer = SharedAdam(shared_model.parameters(), lr=args.lr)
     optimizer.share_memory()

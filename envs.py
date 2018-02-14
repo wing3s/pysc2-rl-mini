@@ -4,6 +4,7 @@ import numpy as np
 from pysc2.env import available_actions_printer
 from pysc2.env import sc2_env
 from pysc2.lib import features
+from pysc2.lib import actions
 
 with open("sc2_config.yml", 'r') as ymlfile:
     sc2_cfg = yaml.load(ymlfile)
@@ -12,16 +13,16 @@ with open("sc2_config.yml", 'r') as ymlfile:
 def create_sc2_minigame_env(map_name, visualize=False):
     env = sc2_env.SC2Env(
         map_name=map_name,
-        step_mul=sc2_cfg['minigame']['step_mul'],
-        screen_size_px=sc2_cfg['minigame']['screen_resolution'],
-        minimap_size_px=sc2_cfg['minigame']['minimap_resolution'],
+        step_mul=sc2_cfg['step_mul'],
+        screen_size_px=(sc2_cfg['screen']['y_res'], sc2_cfg['screen']['x_res']),
+        minimap_size_px=(sc2_cfg['minimap']['y_res'], sc2_cfg['minimap']['x_res']),
         visualize=visualize)
     env = available_actions_printer.AvailableActionsPrinter(env)
     return env
 
 
-class GameImageHandler(object):
-    """Transform observed game image into CNN input tensors.
+class GameInterfaceHandler(object):
+    """Provide game interface info and transform observed game image into CNN input tensors.
         - Special Categorial 2d image:
             single layer normalized by scalar max
             (no same category overlapping)
@@ -37,7 +38,24 @@ class GameImageHandler(object):
         self.screen_unit_type = features.SCREEN_FEATURES.unit_type.index
 
     @property
+    def action_space(self):
+        """Return total number of available actions"""
+        return len(actions.FUNCTIONS)
+
+    @property
+    def screen_resolution(self):
+        """Return (resolution, resolution) for screen"""
+        return (sc2_cfg['screen']['y_res'],
+                sc2_cfg['screen']['x_res'])
+
+    @property
+    def minimap_resolution(self):
+        return (sc2_cfg['minimap']['y_res'],
+                sc2_cfg['minimap']['x_res'])
+
+    @property
     def screen_channels(self):
+        """Return number of channels for preprocessed screen image"""
         channels = 0
         for i, screen_feature in enumerate(features.SCREEN_FEATURES):
             if i == self.screen_player_id or i == self.screen_unit_type:
@@ -49,7 +67,7 @@ class GameImageHandler(object):
         return channels
 
     def preprocess_screen(self, screen):
-        """
+        """Transform screen image into expanded tensor
             Args:
                 screen: obs.observation['screen']
             Returns:
@@ -75,6 +93,7 @@ class GameImageHandler(object):
 
     @property
     def minimap_channels(self):
+        """Return number of channels for preprocessed minimap image"""
         channels = 0
         for i, minimap_feature in enumerate(features.MINIMAP_FEATURES):
             if i == self.minimap_player_id:
@@ -86,6 +105,12 @@ class GameImageHandler(object):
         return channels
 
     def preprocess_minimap(self, minimap):
+        """Transform minimap image into expanded tensor
+            Args:
+                minimap: obs.observation['minimap']
+            Returns:
+                ndarray, shape (len(MINIMAP_FEATURES), minimap_size_px.y, minimap_size_px.x)
+        """
         layers = []
         assert minimap.shape[0] == len(features.MINIMAP_FEATURES)
         for i, minimap_feature in enumerate(features.MINIMAP_FEATURES):

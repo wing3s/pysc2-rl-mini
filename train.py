@@ -1,7 +1,9 @@
 import torch
 from torch.autograd import Variable
 
-from envs import create_sc2_env
+from envs import create_sc2_minigame_env
+from envs import GameInterfaceHandler
+from model import ActorCritic
 
 
 def ensure_shared_grads(model, shared_model):
@@ -17,10 +19,16 @@ def ensure_shared_grads(model, shared_model):
 
 def train_fn(idx, args, shared_model, global_counter, optimizer):
     torch.manual_seed(args.seed + idx)
-    env = create_sc2_env(args.map_name)
+    env = create_sc2_minigame_env(args.map_name)
 
-    # TODO: implement shape and action_space
-    model = ActorCritic('env.shape', 'env.action_space', args.lstm)
+    game_intf = GameInterfaceHandler()
+    model = ActorCritic(
+        game_intf.minimap_channels,
+        game_intf.screen_channels,
+        game_intf.action_space,
+        game_intf.screen_resolution,
+        game_intf.action_space,
+        args.lstm)
     model.train()
 
     state = env.reset()  # numpy array
