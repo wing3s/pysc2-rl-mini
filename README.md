@@ -1,3 +1,4 @@
+*WIP, first version will be released by the end of Feburary 2018*
 
 ## Packages
 * [pysc2](https://github.com/deepmind/pysc2) v1.1
