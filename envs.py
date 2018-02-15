@@ -30,6 +30,8 @@ class GameInterfaceHandler(object):
             expand to multiple layer
         - Scalar 2d image:
             single layer normalized by scalar max
+
+        NOTE: This class can potentially be a decorator to wrap sc2_env
     """
 
     def __init__(self):
