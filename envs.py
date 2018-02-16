@@ -11,6 +11,7 @@ with open("sc2_config.yml", 'r') as ymlfile:
 
 
 def create_sc2_minigame_env(map_name, visualize=False):
+    """Create sc2 game env with available actions printer"""
     env = sc2_env.SC2Env(
         map_name=map_name,
         step_mul=sc2_cfg['step_mul'],
@@ -22,7 +23,9 @@ def create_sc2_minigame_env(map_name, visualize=False):
 
 
 class GameInterfaceHandler(object):
-    """Provide game interface info and transform observed game image into CNN input tensors.
+    """Provide game interface info.
+        Transform observed game image and available actions into CNN input tensors.
+
         - Special Categorial 2d image:
             single layer normalized by scalar max
             (no same category overlapping)
@@ -43,6 +46,12 @@ class GameInterfaceHandler(object):
     def action_space(self):
         """Return total number of available actions"""
         return len(actions.FUNCTIONS)
+
+    def preprocess_available_actions(self, available_actions):
+        """Return ndarray of available_actions from observed['available_actions']"""
+        a_actions = np.zeros((1, self.action_space), dtype=np.float32)
+        a_actions[0, available_actions] = 1
+        return a_actions
 
     @property
     def screen_resolution(self):
