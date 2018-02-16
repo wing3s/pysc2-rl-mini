@@ -48,8 +48,8 @@ def train_fn(idx, args, shared_model, global_counter, optimizer):
 
         # reset observed variables
         entropies = []
-        values_vb = []
-        policy_log_for_actions_vb = []
+        value_vbs = []
+        policy_log_for_action_vbs = []
         rewards = []
 
         # rollout, step forward n steps
@@ -69,17 +69,17 @@ def train_fn(idx, args, shared_model, global_counter, optimizer):
             entropy = -(policy_log_vb * policy_vb).sum(1)
             entropies.append(entropy)
 
-            action = policy_vb.multinomial().data
+            action_ts = policy_vb.multinomial().data
             # For a given state and action, compute the log of the policy at
             # that action for that state.
-            policy_log_for_action_vb = policy_log_vb.gather(1, Variable(action))
+            policy_log_for_action_vb = policy_log_vb.gather(1, Variable(action_ts))
 
-            state, reward, terminal, _ = env.step(action.numpy())
+            state, reward, terminal, _ = env.step(action_ts.numpy())
 
             episode_done = terminal or episode_length >= args.max_episode_length
 
-            values_vb.append(value_vb)
-            policy_log_for_actions_vb.append(policy_log_for_action_vb)
+            value_vbs.append(value_vb)
+            policy_log_for_action_vbs.append(policy_log_for_action_vb)
             rewards.append(reward)
 
             episode_length += 1
@@ -101,21 +101,21 @@ def train_fn(idx, args, shared_model, global_counter, optimizer):
             R_ts = value_vb.data
 
         R_vb = Variable(R_ts)
-        values_vb.append(R_vb)
+        value_vbs.append(R_vb)
 
         policy_loss_vb = 0.
         value_loss_vb = 0.
         gae_ts = torch.zeros(1, 1)
         for i in reversed(range(len(rewards))):
             R_vb = args.gamma * R_vb + reward[i]
-            advantage_vb = R_vb - values_vb[i]
+            advantage_vb = R_vb - value_vbs[i]
             value_loss_vb += 0.5 * advantage_vb.pow(2)
 
             # Generalized Advantage Estimation
             # Refer to http://www.breloff.com/DeepRL-OnlineGAE
             # equation 16, 18
             # tderr_ts: Discounted sum of TD residuals
-            tderr_ts = reward[i] + args.gamma * values_vb[i+1].data - values_vb[i].data
+            tderr_ts = reward[i] + args.gamma * value_vbs[i+1].data - value_vbs[i].data
             gae_ts = gae_ts * args.gamma * args.tau + tderr_ts
 
             # Try to do gradient ascent on the expected discounted reward
@@ -124,7 +124,7 @@ def train_fn(idx, args, shared_model, global_counter, optimizer):
             # from the given state following the policy pi.
             # Since we want to max this value, we define policy loss as negative
             # NOTE: the negative entropy term  encourages exploration
-            policy_loss_vb += -(policy_log_for_actions_vb[i] * Variable(gae_ts) + 0.01 * entropies[i])
+            policy_loss_vb += -(policy_log_for_action_vbs[i] * Variable(gae_ts) + 0.01 * entropies[i])
 
         optimizer.zero_grad()
 
