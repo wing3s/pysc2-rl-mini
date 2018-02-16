@@ -42,27 +42,11 @@ class GameInterfaceHandler(object):
         self.screen_player_id = features.SCREEN_FEATURES.player_id.index
         self.screen_unit_type = features.SCREEN_FEATURES.unit_type.index
 
-    @property
-    def action_space(self):
-        """Return total number of available actions"""
-        return len(actions.FUNCTIONS)
-
-    def preprocess_available_actions(self, available_actions):
-        """Return ndarray of available_actions from observed['available_actions']"""
-        a_actions = np.zeros((1, self.action_space), dtype=np.float32)
-        a_actions[0, available_actions] = 1
-        return a_actions
-
-    @property
-    def screen_resolution(self):
-        """Return (resolution, resolution) for screen"""
-        return (sc2_cfg['screen']['y_res'],
-                sc2_cfg['screen']['x_res'])
-
-    @property
-    def minimap_resolution(self):
-        return (sc2_cfg['minimap']['y_res'],
-                sc2_cfg['minimap']['x_res'])
+        self.action_space = len(actions.FUNCTIONS)
+        self.screen_resolution = (sc2_cfg['screen']['y_res'],
+                                  sc2_cfg['screen']['x_res'])
+        self.minimap_resolution = (sc2_cfg['minimap']['y_res'],
+                                   sc2_cfg['minimap']['x_res'])
 
     @property
     def screen_channels(self):
@@ -138,3 +122,30 @@ class GameInterfaceHandler(object):
                     layer[j, indy, indx] = 1
                 layers.append(layer)
         return np.concatenate(layers, axis=0)
+
+    def preprocess_available_actions(self, available_actions):
+        """Return ndarray of available_actions from observed['available_actions']"""
+        a_actions = np.zeros((1, self.action_space), dtype=np.float32)
+        a_actions[0, available_actions] = 1
+        return a_actions
+
+    def postprocess_action(self, non_spatial_action_ts, spatial_action_ts):
+        """Transform selected non_spatial and spatial actions into pysc2 FunctionCall
+            Args:
+                non_spatial_action_ts: pytorch tensor
+                spatial_action_ts: pytorch tensor
+            Returns:
+                FunctionCall as action for pysc2_env
+        """
+        # TODO: prepare spatial_action_ts, target
+        act_id = non_spatial_action_ts.numpy()[0]
+        target = spatial_action_ts.numpy()
+
+        act_args = []
+        for arg in actions.FUNCTIONS[act_id].args:
+            if arg.name in ('screen', 'minimap', 'screen2'):
+                # Point: [x, y]
+                act_args.append([target[1], target[0]])
+            else:
+                act_args.append([0])
+        return actions.FunctionCall(act_id, act_args)
