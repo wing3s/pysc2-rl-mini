@@ -55,9 +55,9 @@ def main():
     global_counter = mp.Value('i', 0)
 
     # each actor_thread creates its own environment and trains agents
-    for idx in range(args.num_processes):
+    for rank in range(args.num_processes):
         actor_thread = mp.Process(
-            target=train_fn, args=(idx, args, shared_model, global_counter, optimizer))
+            target=train_fn, args=(rank, args, shared_model, global_counter, optimizer))
         actor_thread.daemon = True
         actor_thread.start()
         processes.append(actor_thread)

@@ -17,124 +17,132 @@ def ensure_shared_grads(model, shared_model):
         shared_param._grad = local_param.grad  # pylint: disable=W0212
 
 
-def train_fn(idx, args, shared_model, global_counter, optimizer):
-    torch.manual_seed(args.seed + idx)
+def train_fn(rank, args, shared_model, global_counter, optimizer):
+    torch.manual_seed(args.seed + rank)
     env = create_sc2_minigame_env(args.map_name)
-
     game_intf = GameInterfaceHandler()
-    model = FullyConv(
-        game_intf.minimap_channels,
-        game_intf.screen_channels,
-        game_intf.screen_resolution,
-        game_intf.num_action,
-        args.lstm)
-    model.train()
 
-    state = env.reset()  # numpy array
+    with env:
+        model = FullyConv(
+            game_intf.minimap_channels,
+            game_intf.screen_channels,
+            game_intf.screen_resolution,
+            game_intf.num_action,
+            args.lstm)
+        model.train()
 
-    episode_done = True
-    episode_length = 0
+        state = env.reset()  # state as TimeStep object
 
-    # TODO: verify stop condition
-    while True:
-        # Sync from the global shared model
-        model.load_state_dict(shared_model.state_dict())
+        episode_done = True
+        episode_length = 0
 
-        # start a new episode
-        if episode_done:
-            # TODO: reset lstm variables
-            pass
+        # TODO: verify stop condition
+        while True:
+            # Sync from the global shared model
+            model.load_state_dict(shared_model.state_dict())
 
-        # reset observed variables
-        entropies = []
-        value_vbs = []
-        policy_log_for_action_vbs = []
-        rewards = []
-
-        # rollout, step forward n steps
-        for step in range(args.num_forward_steps):
-            if args.lstm:
-                value_vb, policy_vb, lstm_hidden_vb = model(
-                    get_state_vb(state), lstm_hidden_vb)
-            else:
-                value_vb, policy_vb, _ = model(get_state_vb(state))
-
-            # Entropy of a probability distribution is the expected value of - log P(X),
-            # computed as sum(policy * -log(policy)) which is positive.
-            # Entropy is smaller when the probability distribution is more centered on one action
-            # so larger entropy implies more exploration.
-            # Thus we penalise small entropy which is adding -entropy to our loss.
-            policy_log_vb = torch.log(policy_vb)
-            entropy = -(policy_log_vb * policy_vb).sum(1)
-            entropies.append(entropy)
-
-            action_ts = policy_vb.multinomial().data
-            # For a given state and action, compute the log of the policy at
-            # that action for that state.
-            policy_log_for_action_vb = policy_log_vb.gather(1, Variable(action_ts))
-
-            state, reward, terminal, _ = env.step(action_ts.numpy())
-
-            episode_done = terminal or episode_length >= args.max_episode_length
-
-            value_vbs.append(value_vb)
-            policy_log_for_action_vbs.append(policy_log_for_action_vb)
-            rewards.append(reward)
-
-            episode_length += 1
-            global_counter.value += 1
-
+            # start a new episode
             if episode_done:
-                episode_length = 0
-                state = env.reset()
-                break
+                # TODO: reset lstm variables
+                pass
 
-        # R: estimate reward based on policy pi
-        R_ts = torch.zeros(1, 1)
-        if not episode_done:
-            # bootstrap from last state
-            if args.lstm:
-                value_vb, _, _ = model(get_state_vb(state), lstm_hidden_vb)
-            else:
-                value_vb, _, _ = model(get_state_vb(state))
-            R_ts = value_vb.data
+            # reset observed variables
+            entropies = []
+            value_vbs = []
+            policy_log_for_action_vbs = []
+            rewards = []
 
-        R_vb = Variable(R_ts)
-        value_vbs.append(R_vb)
+            # rollout, step forward n steps
+            for step in range(args.num_forward_steps):
 
-        policy_loss_vb = 0.
-        value_loss_vb = 0.
-        gae_ts = torch.zeros(1, 1)
-        for i in reversed(range(len(rewards))):
-            R_vb = args.gamma * R_vb + reward[i]
-            advantage_vb = R_vb - value_vbs[i]
-            value_loss_vb += 0.5 * advantage_vb.pow(2)
+                if args.lstm:
+                    value_vb, spatial_policy_vb, non_spatial_policy_vb, lstm_hidden_vb = model(
+                        game_intf.get_minimap_vb(state)
+                        game_intf.get_screen_vb(state),
+                        game_intf.get_info_vb(state),
+                        None)
+                else:
+                    value_vb, spatial_policy_vb, non_spatial_policy_vb, _ = model(
+                        game_intf.get_minimap_vb(state),
+                        game_intf.get_screen_vb(state),
+                        game_intf.get_info_vb(state))
 
-            # Generalized Advantage Estimation
-            # Refer to http://www.breloff.com/DeepRL-OnlineGAE
-            # equation 16, 18
-            # tderr_ts: Discounted sum of TD residuals
-            tderr_ts = reward[i] + args.gamma * value_vbs[i+1].data - value_vbs[i].data
-            gae_ts = gae_ts * args.gamma * args.tau + tderr_ts
+                # Entropy of a probability distribution is the expected value of - log P(X),
+                # computed as sum(policy * -log(policy)) which is positive.
+                # Entropy is smaller when the probability distribution is more centered on one action
+                # so larger entropy implies more exploration.
+                # Thus we penalise small entropy which is adding -entropy to our loss.
+                policy_log_vb = torch.log(policy_vb)
+                entropy = -(policy_log_vb * policy_vb).sum(1)
+                entropies.append(entropy)
 
-            # Try to do gradient ascent on the expected discounted reward
-            # The gradient of the expected discounted reward is the gradient
-            # of log pi * (R - estimated V), where R is the sampled reward
-            # from the given state following the policy pi.
-            # Since we want to max this value, we define policy loss as negative
-            # NOTE: the negative entropy term  encourages exploration
-            policy_loss_vb += -(policy_log_for_action_vbs[i] * Variable(gae_ts) + 0.01 * entropies[i])
+                action_ts = policy_vb.multinomial().data
+                # For a given state and action, compute the log of the policy at
+                # that action for that state.
+                policy_log_for_action_vb = policy_log_vb.gather(1, Variable(action_ts))
 
-        optimizer.zero_grad()
+                state, reward, terminal, _ = env.step(action_ts.numpy())
 
-        loss_vb = policy_loss_vb + 0.5 * value_loss_vb
-        loss_vb.backward()
+                episode_done = terminal or episode_length >= args.max_episode_length
 
-        # prevent gradient explosion
-        torch.nn.utils.clip_grad_norm(model.parameters(), 40)
-        ensure_shared_grads(model, shared_model)
+                value_vbs.append(value_vb)
+                policy_log_for_action_vbs.append(policy_log_for_action_vb)
+                rewards.append(reward)
 
-        optimizer.step()
+                episode_length += 1
+                global_counter.value += 1
+
+                if episode_done:
+                    episode_length = 0
+                    state = env.reset()
+                    break
+
+            # R: estimate reward based on policy pi
+            R_ts = torch.zeros(1, 1)
+            if not episode_done:
+                # bootstrap from last state
+                if args.lstm:
+                    value_vb, _, _ = model(get_state_vb(state), lstm_hidden_vb)
+                else:
+                    value_vb, _, _ = model(get_state_vb(state))
+                R_ts = value_vb.data
+
+            R_vb = Variable(R_ts)
+            value_vbs.append(R_vb)
+
+            policy_loss_vb = 0.
+            value_loss_vb = 0.
+            gae_ts = torch.zeros(1, 1)
+            for i in reversed(range(len(rewards))):
+                R_vb = args.gamma * R_vb + reward[i]
+                advantage_vb = R_vb - value_vbs[i]
+                value_loss_vb += 0.5 * advantage_vb.pow(2)
+
+                # Generalized Advantage Estimation
+                # Refer to http://www.breloff.com/DeepRL-OnlineGAE
+                # equation 16, 18
+                # tderr_ts: Discounted sum of TD residuals
+                tderr_ts = reward[i] + args.gamma * value_vbs[i+1].data - value_vbs[i].data
+                gae_ts = gae_ts * args.gamma * args.tau + tderr_ts
+
+                # Try to do gradient ascent on the expected discounted reward
+                # The gradient of the expected discounted reward is the gradient
+                # of log pi * (R - estimated V), where R is the sampled reward
+                # from the given state following the policy pi.
+                # Since we want to max this value, we define policy loss as negative
+                # NOTE: the negative entropy term  encourages exploration
+                policy_loss_vb += -(policy_log_for_action_vbs[i] * Variable(gae_ts) + 0.01 * entropies[i])
+
+            optimizer.zero_grad()
+
+            loss_vb = policy_loss_vb + 0.5 * value_loss_vb
+            loss_vb.backward()
+
+            # prevent gradient explosion
+            torch.nn.utils.clip_grad_norm(model.parameters(), 40)
+            ensure_shared_grads(model, shared_model)
+
+            optimizer.step()
 
 
 def get_state_vb(state):

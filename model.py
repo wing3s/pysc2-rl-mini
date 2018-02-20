@@ -126,9 +126,9 @@ class FullyConv(torch.nn.Module):
                 screen_vb, shape (batch size, # of channel, width, height)
                 info_vb
             Returns:
-                value
-                spatial_policy
-                non_spatial_policy
+                value_vb
+                spatial_policy_vb
+                non_spatial_policy_vb
                 lstm_hidden variables
             TODO: implement lstm
         """
@@ -142,13 +142,13 @@ class FullyConv(torch.nn.Module):
 
         x_spatial = self.sa_conv3(x_state)
         x_spatial = x_spatial.view(x_spatial.shape(0), -1)
-        spatial_policy = self.sa_4(x_spatial)
+        spatial_policy_vb = self.sa_4(x_spatial)
 
         x_non_spatial = x_state.view(x_state.shape(0), -1)
         x_non_spatial = F.relu(self.ns_fc3(x_non_spatial))
 
-        non_spatial_policy = self.nsa_5((self.nsa_fc4(x_non_spatial)))
+        non_spatial_policy_vb = self.nsa_5((self.nsa_fc4(x_non_spatial)))
 
-        value = self.nsc_fc4(x_non_spatial)
+        value_vb = self.nsc_fc4(x_non_spatial)
 
-        return value, spatial_policy, non_spatial_policy, None
+        return value_vb, spatial_policy_vb, non_spatial_policy_vb, None
