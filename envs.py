@@ -42,7 +42,7 @@ class GameInterfaceHandler(object):
         self.screen_player_id = features.SCREEN_FEATURES.player_id.index
         self.screen_unit_type = features.SCREEN_FEATURES.unit_type.index
 
-        self.action_space = len(actions.FUNCTIONS)
+        self.num_action = len(actions.FUNCTIONS)
         self.screen_resolution = (sc2_cfg['screen']['y_res'],
                                   sc2_cfg['screen']['x_res'])
         self.minimap_resolution = (sc2_cfg['minimap']['y_res'],

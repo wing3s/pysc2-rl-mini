@@ -41,9 +41,8 @@ def main():
     shared_model = ActorCritic(
         game_intf.minimap_channels,
         game_intf.screen_channels,
-        game_intf.action_space,
         game_intf.screen_resolution,
-        game_intf.action_space,
+        game_intf.num_action,
         args.lstm)
     shared_model.share_memory()
 

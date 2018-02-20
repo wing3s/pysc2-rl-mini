@@ -25,9 +25,8 @@ def train_fn(idx, args, shared_model, global_counter, optimizer):
     model = ActorCritic(
         game_intf.minimap_channels,
         game_intf.screen_channels,
-        game_intf.action_space,
         game_intf.screen_resolution,
-        game_intf.action_space,
+        game_intf.num_action,
         args.lstm)
     model.train()
 
