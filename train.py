@@ -3,7 +3,7 @@ from torch.autograd import Variable
 
 from envs import create_sc2_minigame_env
 from envs import GameInterfaceHandler
-from model import ActorCritic
+from model import FullyConv
 
 
 def ensure_shared_grads(model, shared_model):
@@ -22,7 +22,7 @@ def train_fn(idx, args, shared_model, global_counter, optimizer):
     env = create_sc2_minigame_env(args.map_name)
 
     game_intf = GameInterfaceHandler()
-    model = ActorCritic(
+    model = FullyConv(
         game_intf.minimap_channels,
         game_intf.screen_channels,
         game_intf.screen_resolution,

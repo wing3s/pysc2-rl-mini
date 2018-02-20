@@ -3,7 +3,7 @@ import argparse
 import torch.multiprocessing as mp
 
 from envs import GameInterfaceHandler
-from model import ActorCritic
+from model import FullyConv
 from optim import SharedAdam
 from train import train_fn
 from monitor import monitor_fn
@@ -38,7 +38,7 @@ def main():
 
     game_intf = GameInterfaceHandler()
     # critic
-    shared_model = ActorCritic(
+    shared_model = FullyConv(
         game_intf.minimap_channels,
         game_intf.screen_channels,
         game_intf.screen_resolution,
