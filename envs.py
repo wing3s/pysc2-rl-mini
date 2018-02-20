@@ -1,8 +1,5 @@
 import yaml
-import torch
 import numpy as np
-
-from torch.autograd import Variable
 
 from pysc2.env import available_actions_printer
 from pysc2.env import sc2_env
@@ -89,16 +86,16 @@ class GameInterfaceHandler(object):
                 layers.append(layer)
         return np.concatenate(layers, axis=0)
 
-    def get_screen_vb(self, state):
+    def get_screen(self, state):
         """Extract screen variable from state.observation['minimap']
             Args:
                 state: Timestep object
             Returns:
-                screen_vb: torch variable, shape (1, len(SCREEN_FEATURES), screen_size_px.y, screen_size_px.x)
+                screen_vb: ndarray, shape (1, len(SCREEN_FEATURES), screen_size_px.y, screen_size_px.x)
         """
-        obs_screen = torch.from_numpy(state.observation['screen'])
+        obs_screen = state.observation['screen']
         screen = self._preprocess_screen(obs_screen)
-        return Variable(screen.unsqueeze(0))
+        return np.expand_dims(screen, 0)
 
     @property
     def minimap_channels(self):
@@ -137,16 +134,16 @@ class GameInterfaceHandler(object):
                 layers.append(layer)
         return np.concatenate(layers, axis=0)
 
-    def get_minimap_vb(self, state):
+    def get_minimap(self, state):
         """Extract minimap variable from state.observation['minimap']
             Args:
                 state: Timestep object
             Returns:
-                minimap_vb: torch variable, shape (1, len(MINIMAP_FEATURES), minimap_size_px.y, minimap_size_px.x)
+                minimap_vb: ndarray, shape (1, len(MINIMAP_FEATURES), minimap_size_px.y, minimap_size_px.x)
         """
-        obs_minimap = torch.from_numpy(state.observation['minimap'])
+        obs_minimap = state.observation['minimap']
         minimap = self._preprocess_minimap(obs_minimap)
-        return Variable(minimap.unsqueeze(0))
+        return np.expand_dims(minimap, 0)
 
     def _preprocess_available_actions(self, available_actions):
         """Returns ndarray of available_actions from observed['available_actions']
@@ -156,15 +153,15 @@ class GameInterfaceHandler(object):
         a_actions[available_actions] = 1
         return a_actions
 
-    def get_info_vb(self, state):
+    def get_info(self, state):
         """Extract available actioins as info from state.observation['available_actioins']
             Args:
                 state: Timestep object
             Returns:
-                info_vb: torch variable, shape (1, num_actions)
+                info_vb: ndarray, shape (1, num_actions)
         """
         a_actions = self._preprocess_available_actions(state.observation['available_actions'])
-        return Variable(a_actions.unsqueeze(0))
+        return np.expand_dims(a_actions, 0)
 
     def postprocess_action(self, non_spatial_action_ts, spatial_action_ts):
         """Transform selected non_spatial and spatial actions into pysc2 FunctionCall

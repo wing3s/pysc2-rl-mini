@@ -54,18 +54,20 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
 
             # rollout, step forward n steps
             for step in range(args.num_forward_steps):
-
+                minimap_vb = Variable(torch.from_numpy(game_intf.get_minimap(state)))
+                screen_vb = Variable(torch.from_numpy(game_intf.get_screen(state)))
+                info_vb = Variable(torch.from_numpy(game_intf.get_info(state)))
                 if args.lstm:
                     value_vb, spatial_policy_vb, non_spatial_policy_vb, lstm_hidden_vb = model(
-                        game_intf.get_minimap_vb(state)
-                        game_intf.get_screen_vb(state),
-                        game_intf.get_info_vb(state),
+                        minimap_vb
+                        screen_vb,
+                        info_vb,
                         None)
                 else:
                     value_vb, spatial_policy_vb, non_spatial_policy_vb, _ = model(
-                        game_intf.get_minimap_vb(state),
-                        game_intf.get_screen_vb(state),
-                        game_intf.get_info_vb(state))
+                        minimap_vb,
+                        screen_vb,
+                        info_vb)
 
                 # Entropy of a probability distribution is the expected value of - log P(X),
                 # computed as sum(policy * -log(policy)) which is positive.
