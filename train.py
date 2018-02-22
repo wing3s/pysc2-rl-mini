@@ -32,6 +32,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
         model.train()
 
         state = env.reset()  # state as TimeStep object
+        obs = state.observation
 
         episode_done = True
         episode_length = 0
@@ -54,20 +55,16 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
 
             # rollout, step forward n steps
             for step in range(args.num_forward_steps):
-                minimap_vb = Variable(torch.from_numpy(game_intf.get_minimap(state)))
-                screen_vb = Variable(torch.from_numpy(game_intf.get_screen(state)))
-                info_vb = Variable(torch.from_numpy(game_intf.get_info(state)))
-                if args.lstm:
-                    value_vb, spatial_policy_vb, non_spatial_policy_vb, lstm_hidden_vb = model(
-                        minimap_vb
-                        screen_vb,
-                        info_vb,
-                        None)
-                else:
-                    value_vb, spatial_policy_vb, non_spatial_policy_vb, _ = model(
-                        minimap_vb,
-                        screen_vb,
-                        info_vb)
+                minimap_vb = Variable(torch.from_numpy(game_intf.get_minimap(obs)))
+                screen_vb = Variable(torch.from_numpy(game_intf.get_screen(obs)))
+                info_vb = Variable(torch.from_numpy(game_intf.get_info(obs)))
+
+                # TODO: if args.lstm, do model training with lstm
+                value_vb, spatial_policy_vb, non_spatial_policy_vb, lstm_hidden_vb = model(
+                    minimap_vb,
+                    screen_vb,
+                    info_vb,
+                    None)
 
                 # Entropy of a probability distribution is the expected value of - log P(X),
                 # computed as sum(policy * -log(policy)) which is positive.
@@ -83,7 +80,10 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 # that action for that state.
                 policy_log_for_action_vb = policy_log_vb.gather(1, Variable(action_ts))
 
-                state, reward, terminal, _ = env.step(action_ts.numpy())
+                state = env.step(action_ts.numpy())
+                obs = state.observation
+                reward = state.reward
+                terminal = state.last()
 
                 episode_done = terminal or episode_length >= args.max_episode_length
 
@@ -103,10 +103,14 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
             R_ts = torch.zeros(1, 1)
             if not episode_done:
                 # bootstrap from last state
-                if args.lstm:
-                    value_vb, _, _ = model(get_state_vb(state), lstm_hidden_vb)
-                else:
-                    value_vb, _, _ = model(get_state_vb(state))
+                # TODO: if args.lstm
+                minimap_vb = Variable(
+                    torch.from_numpy(game_intf.get_minimap(obs)))
+                screen_vb = Variable(
+                    torch.from_numpy(game_intf.get_screen(obs)))
+                info_vb = Variable(torch.from_numpy(game_intf.get_info(obs)))
+
+                value_vb, _, _ = model(minimap_vb, screen_vb, info_vb, None)
                 R_ts = value_vb.data
 
             R_vb = Variable(R_ts)
@@ -145,8 +149,3 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
             ensure_shared_grads(model, shared_model)
 
             optimizer.step()
-
-
-def get_state_vb(state):
-    """Convert state from numpy array to variable"""
-    return Variable(torch.from_numpy(state).unsqueeze(0))

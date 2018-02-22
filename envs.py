@@ -86,15 +86,14 @@ class GameInterfaceHandler(object):
                 layers.append(layer)
         return np.concatenate(layers, axis=0)
 
-    def get_screen(self, state):
-        """Extract screen variable from state.observation['minimap']
+    def get_screen(self, observation):
+        """Extract screen variable from observation['minimap']
             Args:
-                state: Timestep object
+                observation: Timestep.obervation
             Returns:
                 screen_vb: ndarray, shape (1, len(SCREEN_FEATURES), screen_size_px.y, screen_size_px.x)
         """
-        obs_screen = state.observation['screen']
-        screen = self._preprocess_screen(obs_screen)
+        screen = self._preprocess_screen(observation['screen'])
         return np.expand_dims(screen, 0)
 
     @property
@@ -134,15 +133,14 @@ class GameInterfaceHandler(object):
                 layers.append(layer)
         return np.concatenate(layers, axis=0)
 
-    def get_minimap(self, state):
-        """Extract minimap variable from state.observation['minimap']
+    def get_minimap(self, observation):
+        """Extract minimap variable from observation['minimap']
             Args:
-                state: Timestep object
+                observation: Timestep.observation
             Returns:
                 minimap_vb: ndarray, shape (1, len(MINIMAP_FEATURES), minimap_size_px.y, minimap_size_px.x)
         """
-        obs_minimap = state.observation['minimap']
-        minimap = self._preprocess_minimap(obs_minimap)
+        minimap = self._preprocess_minimap(observation['minimap'])
         return np.expand_dims(minimap, 0)
 
     def _preprocess_available_actions(self, available_actions):
@@ -153,14 +151,14 @@ class GameInterfaceHandler(object):
         a_actions[available_actions] = 1
         return a_actions
 
-    def get_info(self, state):
+    def get_info(self, observation):
         """Extract available actioins as info from state.observation['available_actioins']
             Args:
-                state: Timestep object
+                observation: Timestep.observation
             Returns:
                 info_vb: ndarray, shape (1, num_actions)
         """
-        a_actions = self._preprocess_available_actions(state.observation['available_actions'])
+        a_actions = self._preprocess_available_actions(observation['available_actions'])
         return np.expand_dims(a_actions, 0)
 
     def postprocess_action(self, non_spatial_action_ts, spatial_action_ts):
