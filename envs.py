@@ -91,7 +91,7 @@ class GameInterfaceHandler(object):
             Args:
                 observation: Timestep.obervation
             Returns:
-                screen_vb: ndarray, shape (1, len(SCREEN_FEATURES), screen_size_px.y, screen_size_px.x)
+                screen: ndarray, shape (1, len(SCREEN_FEATURES), screen_size_px.y, screen_size_px.x)
         """
         screen = self._preprocess_screen(observation['screen'])
         return np.expand_dims(screen, 0)
@@ -138,7 +138,7 @@ class GameInterfaceHandler(object):
             Args:
                 observation: Timestep.observation
             Returns:
-                minimap_vb: ndarray, shape (1, len(MINIMAP_FEATURES), minimap_size_px.y, minimap_size_px.x)
+                minimap: ndarray, shape (1, len(MINIMAP_FEATURES), minimap_size_px.y, minimap_size_px.x)
         """
         minimap = self._preprocess_minimap(observation['minimap'])
         return np.expand_dims(minimap, 0)
@@ -151,12 +151,22 @@ class GameInterfaceHandler(object):
         a_actions[available_actions] = 1
         return a_actions
 
+    def get_available_actions(self, observation):
+        """
+            Args:
+                observation: Timestep.observation
+            Returns:
+                available_action: ndarray, shape(num_actions)
+        """
+        return self._preprocess_available_actions(
+            observation['available_actions'])
+
     def get_info(self, observation):
         """Extract available actioins as info from state.observation['available_actioins']
             Args:
                 observation: Timestep.observation
             Returns:
-                info_vb: ndarray, shape (1, num_actions)
+                info: ndarray, shape (1, num_actions)
         """
         a_actions = self._preprocess_available_actions(observation['available_actions'])
         return np.expand_dims(a_actions, 0)
@@ -169,15 +179,18 @@ class GameInterfaceHandler(object):
             Returns:
                 FunctionCall as action for pysc2_env
         """
-        # TODO: prepare spatial_action_ts, target
         act_id = non_spatial_action_ts.numpy()[0]
-        target = spatial_action_ts.numpy()
+        target = spatial_action_ts.numpy()[0]
+        target_point = [
+            int(target // self.screen_resolution[0]),
+            int(target % self.screen_resolution[0])
+        ]  # (y, x)
 
         act_args = []
         for arg in actions.FUNCTIONS[act_id].args:
             if arg.name in ('screen', 'minimap', 'screen2'):
                 # Point: [x, y]
-                act_args.append([target[1], target[0]])
+                act_args.append([target_point[1], target_point[0]])
             else:
                 act_args.append([0])
         return actions.FunctionCall(act_id, act_args)

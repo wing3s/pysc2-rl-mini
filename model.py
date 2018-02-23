@@ -119,12 +119,13 @@ class FullyConv(torch.nn.Module):
 
         self.train()
 
-    def forward(self, minimap_vb, screen_vb, info_vb, lstm_hidden_vb=None):
+    def forward(self, minimap_vb, screen_vb, info_vb, valid_action_vb, lstm_hidden_vb=None):
         """
             Args:
                 minimap_vb, shape (batch size, # of channel, width, height)
                 screen_vb, shape (batch size, # of channel, width, height)
                 info_vb
+                valid_action_vb, shape (len(observation['available_actions]))
             Returns:
                 value_vb
                 spatial_policy_vb
@@ -148,7 +149,21 @@ class FullyConv(torch.nn.Module):
         x_non_spatial = F.relu(self.ns_fc3(x_non_spatial))
 
         non_spatial_policy_vb = self.nsa_5((self.nsa_fc4(x_non_spatial)))
+        non_spatial_policy_vb = self._mask_unavailable_actions(
+            non_spatial_policy_vb, valid_action_vb)
 
         value_vb = self.nsc_fc4(x_non_spatial)
 
         return value_vb, spatial_policy_vb, non_spatial_policy_vb, None
+
+    def _mask_unavailable_actions(self, policy_vb, valid_action_vb):
+        """
+            Args:
+                policy_vb, shape (num_actions)
+                valid_action_vb, shape (num_actions)
+            Returns:
+                masked_policy_vb, shape (num_actions)
+        """
+        masked_policy_vb = policy_vb * valid_action_vb
+        masked_policy_vb /= masked_policy_vb
+        return masked_policy_vb

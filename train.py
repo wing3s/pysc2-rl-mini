@@ -32,7 +32,6 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
         model.train()
 
         state = env.reset()  # state as TimeStep object
-        obs = state.observation
 
         episode_done = True
         episode_length = 0
@@ -50,20 +49,22 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
             # reset observed variables
             entropies = []
             value_vbs = []
-            policy_log_for_action_vbs = []
+            spatial_policy_log_for_action_vbs = []
+            non_spatial_policy_log_for_action_vbs = []
             rewards = []
 
             # rollout, step forward n steps
             for step in range(args.num_forward_steps):
-                minimap_vb = Variable(torch.from_numpy(game_intf.get_minimap(obs)))
-                screen_vb = Variable(torch.from_numpy(game_intf.get_screen(obs)))
-                info_vb = Variable(torch.from_numpy(game_intf.get_info(obs)))
-
+                minimap_vb = Variable(torch.from_numpy(game_intf.get_minimap(state.observation)))
+                screen_vb = Variable(torch.from_numpy(game_intf.get_screen(state.observation)))
+                info_vb = Variable(torch.from_numpy(game_intf.get_info(state.observation)))
+                valid_action_vb = Variable(torch.from_numpy(game_intf.get_available_actions(state.observation)), requires_grad=False)
                 # TODO: if args.lstm, do model training with lstm
                 value_vb, spatial_policy_vb, non_spatial_policy_vb, lstm_hidden_vb = model(
                     minimap_vb,
                     screen_vb,
                     info_vb,
+                    valid_action_vb
                     None)
 
                 # Entropy of a probability distribution is the expected value of - log P(X),
@@ -71,24 +72,30 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 # Entropy is smaller when the probability distribution is more centered on one action
                 # so larger entropy implies more exploration.
                 # Thus we penalise small entropy which is adding -entropy to our loss.
-                policy_log_vb = torch.log(policy_vb)
-                entropy = -(policy_log_vb * policy_vb).sum(1)
+                spatial_policy_log_vb = torch.log(spatial_policy_vb)
+                spatial_entropy = -(spatial_policy_log_vb * spatial_policy_vb).sum(1)
+                non_spatial_policy_log_vb = torch.log(non_spatial_policy_vb)
+                non_spatial_entropy = -(non_spatial_policy_log_vb * non_spatial_policy_vb).sum(1)
+                entropy = spatial_entropy + non_spatial_entropy
                 entropies.append(entropy)
 
-                action_ts = policy_vb.multinomial().data
+                spatial_action_ts = spatial_policy_vb.multinomial().data
+                non_spatial_action_ts = non_spatial_policy_vb.multinomial().data
+                sc2_action = game_intf.postprocess_action(non_spatial_action_ts, spatial_action_ts)
                 # For a given state and action, compute the log of the policy at
                 # that action for that state.
-                policy_log_for_action_vb = policy_log_vb.gather(1, Variable(action_ts))
+                spatial_policy_log_for_action_vb = spatial_policy_log_vb.gather(1, Variable(spatial_action_ts))
+                non_spatial_policy_log_for_action_vb = non_spatial_policy_log_vb.gather(1, Variable(non_spatial_action_ts))
 
-                state = env.step(action_ts.numpy())
-                obs = state.observation
+                state = env.step(sc2_action)
                 reward = state.reward
                 terminal = state.last()
 
                 episode_done = terminal or episode_length >= args.max_episode_length
 
                 value_vbs.append(value_vb)
-                policy_log_for_action_vbs.append(policy_log_for_action_vb)
+                spatial_policy_log_for_action_vbs.append((spatial_policy_log_for_action_vb))
+                non_spatial_policy_log_for_action_vbs.append((non_spatial_policy_log_for_action_vb))
                 rewards.append(reward)
 
                 episode_length += 1
@@ -99,6 +106,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                     state = env.reset()
                     break
 
+            # TODO: revise update part
             # R: estimate reward based on policy pi
             R_ts = torch.zeros(1, 1)
             if not episode_done:
@@ -109,8 +117,8 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 screen_vb = Variable(
                     torch.from_numpy(game_intf.get_screen(obs)))
                 info_vb = Variable(torch.from_numpy(game_intf.get_info(obs)))
-
-                value_vb, _, _ = model(minimap_vb, screen_vb, info_vb, None)
+                valid_action_vb = Variable(torch.from_numpy(game_intf.get_available_actions(state.observation)), requires_grad=False)
+                value_vb, _, _ = model(minimap_vb, screen_vb, info_vb, valid_action_vb, None)
                 R_ts = value_vb.data
 
             R_vb = Variable(R_ts)
