@@ -3,7 +3,7 @@
 ## Packages
 * [pysc2](https://github.com/deepmind/pysc2) v1.2
 * [sc2client-proto](https://github.com/Blizzard/s2client-proto) v3.18.0
-* [pytorch](https://github.com/pytorch/pytorch) v0.3.0
+* [pytorch](https://github.com/pytorch/pytorch) v0.3.1
 * [StarCraft II (Linux)](https://github.com/Blizzard/s2client-proto#downloads) v.3.16.1
 * [tensorboardX (Tensorboard for Pytorch)](https://github.com/lanpa/tensorboard-pytorch) v1.0
 
@@ -16,8 +16,8 @@ Follow instruction [here](http://pytorch.org) and chose OS, Package Manager, Pyt
 ```bash
 # check cuda version
 nvcc --version
-# use CUDA 9 as example
-pip install http://download.pytorch.org/whl/cu90/torch-0.3.0.post4-cp27-cp27mu-linux_x86_64.whl
+# use CUDA 9.1 as example
+pip install pip install http://download.pytorch.org/whl/cu91/torch-0.3.1-cp27-cp27mu-linux_x86_64.whl 
 ```
 - OS X
 ```bash
