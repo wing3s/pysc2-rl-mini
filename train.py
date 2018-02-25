@@ -62,16 +62,14 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 info_vb = Variable(torch.from_numpy(game_intf.get_info(state.observation)))
                 valid_action_vb = Variable(torch.from_numpy(game_intf.get_available_actions(state.observation)), requires_grad=False)
                 # TODO: if args.lstm, do model training with lstm
-                value_vb, spatial_policy_vb, non_spatial_policy_vb, lstm_hidden_vb = model(
+                value_vb, spatial_policy_vb, spatial_policy_log_vb, non_spatial_policy_vb, non_spatial_policy_log_vb, lstm_hidden_vb = model(
                     minimap_vb, screen_vb, info_vb, valid_action_vb, None)
                 # Entropy of a probability distribution is the expected value of - log P(X),
                 # computed as sum(policy * -log(policy)) which is positive.
                 # Entropy is smaller when the probability distribution is more centered on one action
                 # so larger entropy implies more exploration.
                 # Thus we penalise small entropy which is adding -entropy to our loss.
-                spatial_policy_log_vb = torch.log(spatial_policy_vb)
                 spatial_entropy = -(spatial_policy_log_vb * spatial_policy_vb).sum(1)
-                non_spatial_policy_log_vb = torch.log(non_spatial_policy_vb)
                 non_spatial_entropy = -(non_spatial_policy_log_vb * non_spatial_policy_vb).sum(1)
                 entropy = spatial_entropy + non_spatial_entropy
                 entropies.append(entropy)
@@ -118,7 +116,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                     torch.from_numpy(game_intf.get_info(state.observation)))
                 valid_action_vb = Variable(
                     torch.from_numpy(game_intf.get_available_actions(state.observation)), requires_grad=False)
-                value_vb, _, _, _ = model(minimap_vb, screen_vb, info_vb, valid_action_vb, None)
+                value_vb, _, _, _, _, _ = model(minimap_vb, screen_vb, info_vb, valid_action_vb, None)
                 R_ts = value_vb.data
 
             R_vb = Variable(R_ts)
@@ -154,7 +152,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
             loss_vb.backward()
 
             # prevent gradient explosion
-            torch.nn.utils.clip_grad_norm(model.parameters(), 40)
+            torch.nn.utils.clip_grad_norm(model.parameters(), 1)
             ensure_shared_grads(model, shared_model)
 
             optimizer.step()

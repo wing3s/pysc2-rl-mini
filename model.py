@@ -112,6 +112,9 @@ class FullyConv(torch.nn.Module):
         self.ns_fc3 = weight_norm(self.ns_fc3)
         self.nsa_fc4 = weight_norm(self.nsa_fc4)
         self.nsc_fc4 = weight_norm(self.nsc_fc4)
+        self.ns_fc3.bias.data.fill_(0)
+        self.nsa_fc4.bias.data.fill_(0)
+        self.nsc_fc4.bias.data.fill_(0)
 
         self.train()
 
@@ -147,17 +150,25 @@ class FullyConv(torch.nn.Module):
         x_spatial = self.sa_conv3(x_state)
         x_spatial = x_spatial.view(x_spatial.shape[0], -1)
         spatial_policy_vb = F.softmax(x_spatial, dim=1)
+        spatial_policy_log_vb = F.log_softmax(x_spatial, dim=1)
 
         x_non_spatial = x_state.view(x_state.shape[0], -1)
         x_non_spatial = F.relu(self.ns_fc3(x_non_spatial))
 
-        non_spatial_policy_vb = F.softmax(self.nsa_fc4(x_non_spatial), dim=1)
+        # NOTE: use torch.log(torch.softmax(Tensor)) will cause result unstable,
+        #       use log_softmax instead
+        x_non_spatial_policy = self.nsa_fc4(x_non_spatial)
+        non_spatial_policy_vb = F.softmax(x_non_spatial_policy, dim=1)
         non_spatial_policy_vb = self._mask_unavailable_actions(
             non_spatial_policy_vb, valid_action_vb)
+        non_spatial_policy_log_vb = F.log_softmax(x_non_spatial_policy, dim=1)
+        non_spatial_policy_log_vb = self._mask_unavailable_actions(
+            non_spatial_policy_log_vb, valid_action_vb
+        )
 
         value_vb = self.nsc_fc4(x_non_spatial)
 
-        return value_vb, spatial_policy_vb, non_spatial_policy_vb, None
+        return value_vb, spatial_policy_vb, spatial_policy_log_vb, non_spatial_policy_vb, non_spatial_policy_log_vb, None
 
     def _mask_unavailable_actions(self, policy_vb, valid_action_vb):
         """
@@ -168,5 +179,5 @@ class FullyConv(torch.nn.Module):
                 masked_policy_vb, shape (num_actions)
         """
         masked_policy_vb = policy_vb * valid_action_vb
-        masked_policy_vb /= masked_policy_vb.sum()
+        masked_policy_vb /= masked_policy_vb.sum(1)
         return masked_policy_vb
