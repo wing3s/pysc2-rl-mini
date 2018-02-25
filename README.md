@@ -7,6 +7,8 @@
 * [StarCraft II (Linux)](https://github.com/Blizzard/s2client-proto#downloads) v.3.16.1
 * [tensorboardX (Tensorboard for Pytorch)](https://github.com/lanpa/tensorboard-pytorch) v1.0
 
+Python3 is required to resolve [multiprocessing issue](https://github.com/ikostrikov/pytorch-a3c/issues/37).
+
 Detail installation [steps](#installation).
 
 ## <a id='installation'></a> Installation
@@ -17,12 +19,12 @@ Follow instruction [here](http://pytorch.org) and chose OS, Package Manager, Pyt
 # check cuda version
 nvcc --version
 # use CUDA 9.1 as example
-pip install http://download.pytorch.org/whl/cu91/torch-0.3.1-cp27-cp27mu-linux_x86_64.whl 
+pip3 install http://download.pytorch.org/whl/cu91/torch-0.3.1-cp35-cp35m-linux_x86_64.whl 
 ```
 - OS X
 ```bash
 # no GPU as example
-pip install http://download.pytorch.org/whl/torch-0.3.0.post4-cp27-none-macosx_10_6_x86_64.whl 
+pip3 install http://download.pytorch.org/whl/torch-0.3.1-cp35-cp35m-macosx_10_6_x86_64.whl  
 ```
 #### pysc2
 ```bash
