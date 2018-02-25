@@ -174,23 +174,22 @@ class GameInterfaceHandler(object):
     def postprocess_action(self, non_spatial_action_ts, spatial_action_ts):
         """Transform selected non_spatial and spatial actions into pysc2 FunctionCall
             Args:
-                non_spatial_action_ts: pytorch tensor
-                spatial_action_ts: pytorch tensor
+                non_spatial_action_ts: ndarray, shape (1)
+                spatial_action_ts: ndarray, shape (1)
             Returns:
                 FunctionCall as action for pysc2_env
         """
-        act_id = non_spatial_action_ts.numpy()[0]
-        target = spatial_action_ts.numpy()[0]
+        act_id = non_spatial_action_ts[0]
+        target = spatial_action_ts[0]
         target_point = [
-            int(target // self.screen_resolution[0]),
-            int(target % self.screen_resolution[0])
-        ]  # (y, x)
+            int(target % self.screen_resolution[0]),
+            int(target // self.screen_resolution[0])
+        ]  # (x, y)
 
         act_args = []
         for arg in actions.FUNCTIONS[act_id].args:
             if arg.name in ('screen', 'minimap', 'screen2'):
-                # Point: [x, y]
-                act_args.append([target_point[1], target_point[0]])
+                act_args.append(target_point)
             else:
                 act_args.append([0])
         return actions.FunctionCall(act_id, act_args)

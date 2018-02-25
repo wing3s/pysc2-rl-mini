@@ -81,7 +81,9 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
 
                 spatial_action_ts = spatial_policy_vb.multinomial().data
                 non_spatial_action_ts = non_spatial_policy_vb.multinomial().data
-                sc2_action = game_intf.postprocess_action(non_spatial_action_ts, spatial_action_ts)
+                sc2_action = game_intf.postprocess_action(
+                    non_spatial_action_ts.numpy(),
+                    spatial_action_ts.numpy())
                 # For a given state and action, compute the log of the policy at
                 # that action for that state.
                 spatial_policy_log_for_action_vb = spatial_policy_log_vb.gather(1, Variable(spatial_action_ts))
@@ -106,7 +108,6 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                     state = env.reset()
                     break
 
-            # TODO: revise update part
             # R: estimate reward based on policy pi
             R_ts = torch.zeros(1, 1)
             if not episode_done:
@@ -116,9 +117,11 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                     torch.from_numpy(game_intf.get_minimap(obs)))
                 screen_vb = Variable(
                     torch.from_numpy(game_intf.get_screen(obs)))
-                info_vb = Variable(torch.from_numpy(game_intf.get_info(obs)))
-                valid_action_vb = Variable(torch.from_numpy(game_intf.get_available_actions(state.observation)), requires_grad=False)
-                value_vb, _, _ = model(minimap_vb, screen_vb, info_vb, valid_action_vb, None)
+                info_vb = Variable(
+                    torch.from_numpy(game_intf.get_info(obs)))
+                valid_action_vb = Variable(
+                    torch.from_numpy(game_intf.get_available_actions(state.observation)), requires_grad=False)
+                value_vb, _, _, _ = model(minimap_vb, screen_vb, info_vb, valid_action_vb, None)
                 R_ts = value_vb.data
 
             R_vb = Variable(R_ts)
@@ -145,7 +148,8 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 # from the given state following the policy pi.
                 # Since we want to max this value, we define policy loss as negative
                 # NOTE: the negative entropy term  encourages exploration
-                policy_loss_vb += -(policy_log_for_action_vbs[i] * Variable(gae_ts) + 0.01 * entropies[i])
+                policy_log_for_action_vb = spatial_policy_log_for_action_vb[i] + non_spatial_policy_log_for_action_vb[i]
+                policy_loss_vb += -(policy_log_for_action_vb * Variable(gae_ts) + 0.01 * entropies[i])
 
             optimizer.zero_grad()
 
