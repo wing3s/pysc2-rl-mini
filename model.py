@@ -89,14 +89,12 @@ class FullyConv(torch.nn.Module):
         # spatial actor
         state_channels = 32 * 2 + 1  # stacking minimap, screen, info
         self.sa_conv3 = nn.Conv2d(state_channels, 1, 1, stride=1)  # shape (N, 65, s, s)
-        self.sa_4 = nn.Softmax()
 
         # non spatial feature
         self.ns_fc3 = nn.Linear(
             screen_resolution[0] * screen_resolution[1] * state_channels, 256)
         # non spatial actor
         self.nsa_fc4 = nn.Linear(256, num_action)
-        self.nsa_5 = nn.Softmax()
         # non spatial critic
         self.nsc_fc4 = nn.Linear(256, 1)
 
@@ -122,8 +120,8 @@ class FullyConv(torch.nn.Module):
     def forward(self, minimap_vb, screen_vb, info_vb, valid_action_vb, lstm_hidden_vb=None):
         """
             Args:
-                minimap_vb, shape (batch size, # of channel, width, height)
-                screen_vb, shape (batch size, # of channel, width, height)
+                minimap_vb, shape (N, # of channel, width, height)
+                screen_vb, shape (N, # of channel, width, height)
                 info_vb
                 valid_action_vb, shape (len(observation['available_actions]))
             Returns:
@@ -143,12 +141,12 @@ class FullyConv(torch.nn.Module):
 
         x_spatial = self.sa_conv3(x_state)
         x_spatial = x_spatial.view(x_spatial.shape(0), -1)
-        spatial_policy_vb = self.sa_4(x_spatial)
+        spatial_policy_vb = F.softmax(x_spatial)
 
         x_non_spatial = x_state.view(x_state.shape(0), -1)
         x_non_spatial = F.relu(self.ns_fc3(x_non_spatial))
 
-        non_spatial_policy_vb = self.nsa_5((self.nsa_fc4(x_non_spatial)))
+        non_spatial_policy_vb = F.softmax((self.nsa_fc4(x_non_spatial)))
         non_spatial_policy_vb = self._mask_unavailable_actions(
             non_spatial_policy_vb, valid_action_vb)
 
@@ -165,5 +163,5 @@ class FullyConv(torch.nn.Module):
                 masked_policy_vb, shape (num_actions)
         """
         masked_policy_vb = policy_vb * valid_action_vb
-        masked_policy_vb /= masked_policy_vb
+        masked_policy_vb /= masked_policy_vb.sum()
         return masked_policy_vb

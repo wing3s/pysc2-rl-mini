@@ -148,7 +148,7 @@ class GameInterfaceHandler(object):
             shape (num_actions)
         """
         a_actions = np.zeros((self.num_action), dtype=np.float32)
-        a_actions[available_actions] = 1
+        a_actions[available_actions] = 1.0
         return a_actions
 
     def get_available_actions(self, observation):
