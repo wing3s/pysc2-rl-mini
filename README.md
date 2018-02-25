@@ -1,7 +1,7 @@
 *WIP, first version will be released by the end of Feburary 2018*
 
 ## Packages
-* [pysc2](https://github.com/deepmind/pysc2) v1.1
+* [pysc2](https://github.com/deepmind/pysc2) v1.2
 * [sc2client-proto](https://github.com/Blizzard/s2client-proto) v3.18.0
 * [pytorch](https://github.com/pytorch/pytorch) v0.3.0
 * [StarCraft II (Linux)](https://github.com/Blizzard/s2client-proto#downloads) v.3.16.1

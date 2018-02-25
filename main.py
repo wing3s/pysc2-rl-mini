@@ -1,5 +1,7 @@
+import sys
 import argparse
 
+from absl import flags
 import torch.multiprocessing as mp
 
 from envs import GameInterfaceHandler
@@ -8,11 +10,15 @@ from optim import SharedAdam
 from train import train_fn
 from monitor import monitor_fn
 
+# workaround for pysc2 flags
+FLAGS = flags.FLAGS
+FLAGS([__file__])
+
 parser = argparse.ArgumentParser(description='A3C')
 
 # model parameters
 parser.add_argument('--lr', type=float, default=0.0001, metavar='LR',
-                    help='learning rate (default: 0.0001')
+                    help='learning rate (default: 0.0001)')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for rewards (default: 0.99)')
 parser.add_argument('--tau', type=float, default=1.00, metavar='T',
