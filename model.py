@@ -104,10 +104,8 @@ class FullyConv(torch.nn.Module):
         torch.nn.init.xavier_uniform(self.sconv1.weight)
         torch.nn.init.xavier_uniform(self.sconv2.weight)
         torch.nn.init.xavier_uniform(self.sa_conv3.weight)
-        torch.nn.init.xavier_uniform(self.sa_4.weight)
         torch.nn.init.xavier_uniform(self.ns_fc3.weight)
         torch.nn.init.xavier_uniform(self.nsa_fc4.weight)
-        torch.nn.init.xavier_uniform(self.nsa_5.weight)
         torch.nn.init.xavier_uniform(self.nsc_fc4.weight)
 
         # apply normalized weight
