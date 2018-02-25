@@ -61,12 +61,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 valid_action_vb = Variable(torch.from_numpy(game_intf.get_available_actions(state.observation)), requires_grad=False)
                 # TODO: if args.lstm, do model training with lstm
                 value_vb, spatial_policy_vb, non_spatial_policy_vb, lstm_hidden_vb = model(
-                    minimap_vb,
-                    screen_vb,
-                    info_vb,
-                    valid_action_vb,
-                    None)
-
+                    minimap_vb, screen_vb, info_vb, valid_action_vb, None)
                 # Entropy of a probability distribution is the expected value of - log P(X),
                 # computed as sum(policy * -log(policy)) which is positive.
                 # Entropy is smaller when the probability distribution is more centered on one action
