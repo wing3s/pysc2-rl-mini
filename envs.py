@@ -173,16 +173,16 @@ class GameInterfaceHandler(object):
         """
         return self.get_available_actions(observation)
 
-    def postprocess_action(self, non_spatial_action_ts, spatial_action_ts):
+    def postprocess_action(self, non_spatial_action, spatial_action):
         """Transform selected non_spatial and spatial actions into pysc2 FunctionCall
             Args:
-                non_spatial_action_ts: ndarray, shape (1)
-                spatial_action_ts: ndarray, shape (1)
+                non_spatial_action: ndarray, shape (1, 1)
+                spatial_action: ndarray, shape (1, 1)
             Returns:
                 FunctionCall as action for pysc2_env
         """
-        act_id = non_spatial_action_ts[0]
-        target = spatial_action_ts[0]
+        act_id = non_spatial_action[0][0]
+        target = spatial_action[0][0]
         target_point = [
             int(target % self.screen_resolution[0]),
             int(target // self.screen_resolution[0])
