@@ -1,6 +1,8 @@
 import torch
 from torch.autograd import Variable
 
+import numpy as np
+
 from envs import create_sc2_minigame_env
 from envs import GameInterfaceHandler
 from model import FullyConv
@@ -85,7 +87,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 non_spatial_policy_log_for_action_vb = non_spatial_policy_log_vb.gather(1, Variable(non_spatial_action_ts))
 
                 state = env.step([sc2_action])[0]
-                reward = state.reward
+                reward = np.asscalar(state.reward)
                 terminal = state.last()
 
                 episode_done = terminal or episode_length >= args.max_episode_length
