@@ -126,7 +126,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
             value_loss_vb = 0.
             gae_ts = torch.zeros(1, 1)
             for i in reversed(range(len(rewards))):
-                R_vb = args.gamma * R_vb + reward[i]
+                R_vb = args.gamma * R_vb + rewards[i]
                 advantage_vb = R_vb - value_vbs[i]
                 value_loss_vb += 0.5 * advantage_vb.pow(2)
 
@@ -134,7 +134,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 # Refer to http://www.breloff.com/DeepRL-OnlineGAE
                 # equation 16, 18
                 # tderr_ts: Discounted sum of TD residuals
-                tderr_ts = reward[i] + args.gamma * value_vbs[i+1].data - value_vbs[i].data
+                tderr_ts = rewards[i] + args.gamma * value_vbs[i+1].data - value_vbs[i].data
                 gae_ts = gae_ts * args.gamma * args.tau + tderr_ts
 
                 # Try to do gradient ascent on the expected discounted reward
@@ -143,7 +143,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 # from the given state following the policy pi.
                 # Since we want to max this value, we define policy loss as negative
                 # NOTE: the negative entropy term  encourages exploration
-                policy_log_for_action_vb = spatial_policy_log_for_action_vb[i] + non_spatial_policy_log_for_action_vb[i]
+                policy_log_for_action_vb = spatial_policy_log_for_action_vbs[i] + non_spatial_policy_log_for_action_vbs[i]
                 policy_loss_vb += -(policy_log_for_action_vb * Variable(gae_ts) + 0.01 * entropies[i])
 
             optimizer.zero_grad()
