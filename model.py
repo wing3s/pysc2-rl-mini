@@ -146,12 +146,12 @@ class FullyConv(torch.nn.Module):
 
         x_spatial = self.sa_conv3(x_state)
         x_spatial = x_spatial.view(x_spatial.shape[0], -1)
-        spatial_policy_vb = F.softmax(x_spatial)
+        spatial_policy_vb = F.softmax(x_spatial, dim=1)
 
         x_non_spatial = x_state.view(x_state.shape[0], -1)
         x_non_spatial = F.relu(self.ns_fc3(x_non_spatial))
 
-        non_spatial_policy_vb = F.softmax(self.nsa_fc4(x_non_spatial))
+        non_spatial_policy_vb = F.softmax(self.nsa_fc4(x_non_spatial), dim=1)
         non_spatial_policy_vb = self._mask_unavailable_actions(
             non_spatial_policy_vb, valid_action_vb)
 
