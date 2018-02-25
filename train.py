@@ -64,7 +64,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                     minimap_vb,
                     screen_vb,
                     info_vb,
-                    valid_action_vb
+                    valid_action_vb,
                     None)
 
                 # Entropy of a probability distribution is the expected value of - log P(X),
@@ -114,11 +114,11 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 # bootstrap from last state
                 # TODO: if args.lstm
                 minimap_vb = Variable(
-                    torch.from_numpy(game_intf.get_minimap(obs)))
+                    torch.from_numpy(game_intf.get_minimap(state.observation)))
                 screen_vb = Variable(
-                    torch.from_numpy(game_intf.get_screen(obs)))
+                    torch.from_numpy(game_intf.get_screen(state.observation)))
                 info_vb = Variable(
-                    torch.from_numpy(game_intf.get_info(obs)))
+                    torch.from_numpy(game_intf.get_info(state.observation)))
                 valid_action_vb = Variable(
                     torch.from_numpy(game_intf.get_available_actions(state.observation)), requires_grad=False)
                 value_vb, _, _, _ = model(minimap_vb, screen_vb, info_vb, valid_action_vb, None)
