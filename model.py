@@ -123,9 +123,9 @@ class FullyConv(torch.nn.Module):
                 info_vb, shape (len(info))
                 valid_action_vb, shape (len(observation['available_actions]))
             Returns:
-                value_vb
-                spatial_policy_vb
-                non_spatial_policy_vb
+                value_vb, shape (1, 1)
+                spatial_policy_vb, shape (1, s*s)
+                non_spatial_policy_vb, shape (1, num_actions)
                 lstm_hidden variables
             TODO: implement lstm
         """
@@ -145,10 +145,10 @@ class FullyConv(torch.nn.Module):
         x_state = torch.cat((x_m, x_s, x_i), dim=1)  # concat along channel dimension
 
         x_spatial = self.sa_conv3(x_state)
-        x_spatial = x_spatial.view(x_spatial.shape(0), -1)
+        x_spatial = x_spatial.view(x_spatial.shape[0], -1)
         spatial_policy_vb = F.softmax(x_spatial)
 
-        x_non_spatial = x_state.view(x_state.shape(0), -1)
+        x_non_spatial = x_state.view(x_state.shape[0], -1)
         x_non_spatial = F.relu(self.ns_fc3(x_non_spatial))
 
         non_spatial_policy_vb = F.softmax(self.nsa_fc4(x_non_spatial))
