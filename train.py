@@ -31,7 +31,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
             args.lstm)
         model.train()
 
-        state = env.reset()  # state as TimeStep object
+        state = env.reset()[0]  # state as TimeStep object from single player
 
         episode_done = True
         episode_length = 0
@@ -89,7 +89,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 spatial_policy_log_for_action_vb = spatial_policy_log_vb.gather(1, Variable(spatial_action_ts))
                 non_spatial_policy_log_for_action_vb = non_spatial_policy_log_vb.gather(1, Variable(non_spatial_action_ts))
 
-                state = env.step(sc2_action)
+                state = env.step(sc2_action)[0]
                 reward = state.reward
                 terminal = state.last()
 
