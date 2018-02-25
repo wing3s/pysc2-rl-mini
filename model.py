@@ -1,8 +1,10 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from torch.nn.utils import weight_norm
+from torch.autograd import Variable
 
 
 class ActorCritic(torch.nn.Module):
@@ -29,7 +31,6 @@ class ActorCritic(torch.nn.Module):
 
         self.critic_5 = nn.Linear(256, 1)
         self.actor_5 = nn.Linear(256, action_space.n)
-        self.actor_6 = nn.Softmax()
 
         # apply Xavier weights initialization
         torch.nn.init.xavier_uniform(self.conv1.weight)
@@ -64,7 +65,6 @@ class ActorCritic(torch.nn.Module):
 
         value = self.critic_5(x)
         policy = self.actor_5(x)
-        policy = self.actor_6(x)
 
         return value, policy, new_lstm_hidden_vb
 
@@ -120,7 +120,7 @@ class FullyConv(torch.nn.Module):
             Args:
                 minimap_vb, shape (N, # of channel, width, height)
                 screen_vb, shape (N, # of channel, width, height)
-                info_vb
+                info_vb, shape (len(info))
                 valid_action_vb, shape (len(observation['available_actions]))
             Returns:
                 value_vb
@@ -134,7 +134,14 @@ class FullyConv(torch.nn.Module):
         x_s = F.relu(self.sconv1(screen_vb))
         x_s = F.relu(self.sconv2(x_s))
 
-        x_i = info_vb.expand_as(x_s)
+        x_i = Variable(
+            info_vb.data.repeat(
+                math.ceil(x_s.shape[2] * x_s.shape[3] / info_vb.shape[0])
+            ).resize_(
+                x_s.shape[2], x_s.shape[3]
+            )
+        )  # transform info vector into 2d matrix with shape (s, s) filled with repeat values
+        x_i = x_i.unsqueeze(0).unsqueeze(0)  # shape (1, 1, s, s)
         x_state = torch.cat((x_m, x_s, x_i), dim=1)  # concat along channel dimension
 
         x_spatial = self.sa_conv3(x_state)
@@ -144,7 +151,7 @@ class FullyConv(torch.nn.Module):
         x_non_spatial = x_state.view(x_state.shape(0), -1)
         x_non_spatial = F.relu(self.ns_fc3(x_non_spatial))
 
-        non_spatial_policy_vb = F.softmax((self.nsa_fc4(x_non_spatial)))
+        non_spatial_policy_vb = F.softmax(self.nsa_fc4(x_non_spatial))
         non_spatial_policy_vb = self._mask_unavailable_actions(
             non_spatial_policy_vb, valid_action_vb)
 

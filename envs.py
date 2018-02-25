@@ -169,10 +169,9 @@ class GameInterfaceHandler(object):
             Args:
                 observation: Timestep.observation
             Returns:
-                info: ndarray, shape (1, num_actions)
+                info: ndarray, shape (num_actions)
         """
-        a_actions = self._preprocess_available_actions(observation['available_actions'])
-        return np.expand_dims(a_actions, 0)
+        return self.get_available_actions(observation)
 
     def postprocess_action(self, non_spatial_action_ts, spatial_action_ts):
         """Transform selected non_spatial and spatial actions into pysc2 FunctionCall
