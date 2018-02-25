@@ -5,6 +5,7 @@ import torch.optim as optim
 
 # Reference: https://github.com/openai/universe-starter-agent
 class SharedAdam(optim.Adam):
+    # pylint: disable=C0103
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0):
         super(SharedAdam, self).__init__(params, lr, betas, eps, weight_decay)
 
@@ -24,10 +25,12 @@ class SharedAdam(optim.Adam):
                 state['exp_avg_sq'].share_memory_()
 
     def step(self, closure=None):
-        """Performs a single optimization step.
-        Arguments:
+        """
+        Performs a single optimization step.
+        Args:
             closure (callable, optional): A closure that reevaluates the model
-            and returns the loss
+        Returns:
+            loss
         """
         loss = None
         if closure is not None:
