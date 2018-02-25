@@ -17,7 +17,7 @@ Follow instruction [here](http://pytorch.org) and chose OS, Package Manager, Pyt
 # check cuda version
 nvcc --version
 # use CUDA 9.1 as example
-pip install pip install http://download.pytorch.org/whl/cu91/torch-0.3.1-cp27-cp27mu-linux_x86_64.whl 
+pip install http://download.pytorch.org/whl/cu91/torch-0.3.1-cp27-cp27mu-linux_x86_64.whl 
 ```
 - OS X
 ```bash
