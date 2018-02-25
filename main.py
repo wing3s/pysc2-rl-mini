@@ -40,6 +40,7 @@ parser.add_argument('--map-name', default='FindAndDefeatZerglings', metavar='MAP
 
 
 def main():
+    mp.set_start_method('spawn')
     args = parser.parse_args()
 
     game_intf = GameInterfaceHandler()
