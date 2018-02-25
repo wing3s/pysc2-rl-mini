@@ -38,6 +38,8 @@ class GameInterfaceHandler(object):
     """
 
     def __init__(self):
+        self.dtype = np.float32
+
         self.minimap_player_id = features.MINIMAP_FEATURES.player_id.index
         self.screen_player_id = features.SCREEN_FEATURES.player_id.index
         self.screen_unit_type = features.SCREEN_FEATURES.unit_type.index
@@ -68,7 +70,7 @@ class GameInterfaceHandler(object):
             Returns:
                 ndarray, shape (len(SCREEN_FEATURES), screen_size_px.y, screen_size_px.x)
         """
-        screen = np.array(screen, dtype=np.float32)
+        screen = np.array(screen, dtype=self.dtype)
         layers = []
         assert screen.shape[0] == len(features.SCREEN_FEATURES)
         for i, screen_feature in enumerate(features.SCREEN_FEATURES):
@@ -79,7 +81,7 @@ class GameInterfaceHandler(object):
             else:
                 layer = np.zeros(
                     (screen_feature.scale, screen.shape[1], screen.shape[2]),
-                    dtype=np.float32)
+                    dtype=self.dtype)
                 for j in range(screen_feature.scale):
                     indy, indx = (screen[i] == j).nonzero()
                     layer[j, indy, indx] = 1
@@ -116,6 +118,7 @@ class GameInterfaceHandler(object):
             Returns:
                 ndarray, shape (len(MINIMAP_FEATURES), minimap_size_px.y, minimap_size_px.x)
         """
+        minimap = np.array(minimap, dtype=self.dtype)
         layers = []
         assert minimap.shape[0] == len(features.MINIMAP_FEATURES)
         for i, minimap_feature in enumerate(features.MINIMAP_FEATURES):
@@ -126,7 +129,7 @@ class GameInterfaceHandler(object):
             else:
                 layer = np.zeros(
                     (minimap_feature.scale, minimap.shape[1], minimap.shape[2]),
-                    dtype=np.float32)
+                    dtype=self.dtype)
                 for j in range(minimap_feature.scale):
                     indy, indx = (minimap[i] == j).nonzero()
                     layer[j, indy, indx] = 1
@@ -147,8 +150,8 @@ class GameInterfaceHandler(object):
         """Returns ndarray of available_actions from observed['available_actions']
             shape (num_actions)
         """
-        a_actions = np.zeros((self.num_action), dtype=np.float32)
-        a_actions[available_actions] = 1.0
+        a_actions = np.zeros((self.num_action), dtype=self.dtype)
+        a_actions[available_actions] = 1.
         return a_actions
 
     def get_available_actions(self, observation):
