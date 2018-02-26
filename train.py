@@ -100,7 +100,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
 
                 if episode_done:
                     episode_length = 0
-                    state = env.reset()
+                    state = env.reset()[0]
                     break
 
             # R: estimate reward based on policy pi
