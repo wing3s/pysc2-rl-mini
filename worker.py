@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch.autograd import Variable
+from tensorboardX import SummaryWriter
 
 from envs import create_sc2_minigame_env
 from envs import GameInterfaceHandler
@@ -18,7 +19,9 @@ def ensure_shared_grads(model, shared_model):
         shared_param._grad = local_param.grad  # pylint: disable=W0212
 
 
-def worker_fn(rank, args, shared_model, global_counter, summvary_writer, optimizer):
+def worker_fn(rank, args, shared_model, global_counter, enable_summary, optimizer):
+    if enable_summary:
+        summary_writer = SummaryWriter('{0}{1}'.format(args.log_dir, args.map_name))
     torch.manual_seed(args.seed + rank)
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
@@ -157,16 +160,16 @@ def worker_fn(rank, args, shared_model, global_counter, summvary_writer, optimiz
             optimizer.step()
 
             # log stats
-            if summvary_writer is not None:
-                summvary_writer.add_histogram('train/policy/spatial',
-                                              spatial_policy_vb.data.numpy(),
-                                              global_counter.value)
-                summvary_writer.add_histogram('train/policy/non_spatial',
-                                              non_spatial_policy_vb.data.numpy(),
-                                              global_counter.value)
-                summvary_writer.add_scalar('train/loss/policy',
-                                           policy_loss_vb[0][0],
-                                           global_counter.value)
-                summvary_writer.add_scalar('train/loss/value',
-                                           value_loss_vb[0][0],
-                                           global_counter.value)
+            if enable_summary:
+                summary_writer.add_histogram('train/policy/spatial',
+                                             spatial_policy_vb.data.numpy(),
+                                             global_counter.value)
+                summary_writer.add_histogram('train/policy/non_spatial',
+                                             non_spatial_policy_vb.data.numpy(),
+                                             global_counter.value)
+                summary_writer.add_scalar('train/loss/policy',
+                                          policy_loss_vb[0][0],
+                                          global_counter.value)
+                summary_writer.add_scalar('train/loss/value',
+                                          value_loss_vb[0][0],
+                                          global_counter.value)

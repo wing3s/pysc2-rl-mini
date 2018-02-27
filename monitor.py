@@ -1,13 +1,17 @@
+import time
 import numpy as np
 import torch
 from torch.autograd import Variable
+from tensorboardX import SummaryWriter
 
 from envs import create_sc2_minigame_env
 from envs import GameInterfaceHandler
 from model import FullyConv
 
 
-def monitor_fn(rank, args, shared_model, global_counter, summary_writer):
+def monitor_fn(rank, args, shared_model, global_counter, enable_summary=True):
+    if enable_summary:
+        summary_writer = SummaryWriter('{0}{1}'.format(args.log_dir, args.map_name))
     torch.manual_seed(args.seed + rank)
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
@@ -42,9 +46,8 @@ def monitor_fn(rank, args, shared_model, global_counter, summary_writer):
             # TODO: if args.lstm, do model training with lstm
             value_vb, spatial_policy_vb, spatial_policy_log_vb, non_spatial_policy_vb, non_spatial_policy_log_vb, lstm_hidden_vb = model(
                 minimap_vb, screen_vb, info_vb, valid_action_vb, None)
-
-            spatial_action_ts = spatial_policy_vb.max(dim=1)[1].data
-            non_spatial_action_ts = non_spatial_policy_vb.max(dim=1)[1].data
+            spatial_action_ts = spatial_policy_vb.max(dim=1)[1].unsqueeze(0).data
+            non_spatial_action_ts = non_spatial_policy_vb.max(dim=1)[1].unsqueeze(0).data
             sc2_action = game_intf.postprocess_action(
                 non_spatial_action_ts.numpy(),
                 spatial_action_ts.numpy())
@@ -60,8 +63,9 @@ def monitor_fn(rank, args, shared_model, global_counter, summary_writer):
 
             if episode_done:
                 # log stats
-                summary_writer.add_scalar('monitor/episode_reward', reward_sum, global_counter.value)
-                summary_writer.add_scalar('monitor/episode_length', episode_length, global_counter.value)
+                if enable_summary:
+                    summary_writer.add_scalar('monitor/episode_reward', reward_sum, global_counter.value)
+                    summary_writer.add_scalar('monitor/episode_length', episode_length, global_counter.value)
                 # save model
                 if reward_sum >= max_score:
                     max_score = reward_sum
