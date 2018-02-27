@@ -1,7 +1,6 @@
+import numpy as np
 import torch
 from torch.autograd import Variable
-
-import numpy as np
 
 from envs import create_sc2_minigame_env
 from envs import GameInterfaceHandler
@@ -19,7 +18,7 @@ def ensure_shared_grads(model, shared_model):
         shared_param._grad = local_param.grad  # pylint: disable=W0212
 
 
-def train_fn(rank, args, shared_model, global_counter, optimizer):
+def worker_fn(rank, args, shared_model, global_counter, summvary_writer, optimizer):
     torch.manual_seed(args.seed + rank)
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
@@ -84,7 +83,7 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
                 spatial_policy_log_for_action_vb = spatial_policy_log_vb.gather(1, Variable(spatial_action_ts))
                 non_spatial_policy_log_for_action_vb = non_spatial_policy_log_vb.gather(1, Variable(non_spatial_action_ts))
 
-                state = env.step([sc2_action])[0]
+                state = env.step([sc2_action])[0]  # single player
                 reward = np.asscalar(state.reward)
                 terminal = state.last()
 
@@ -156,3 +155,18 @@ def train_fn(rank, args, shared_model, global_counter, optimizer):
             ensure_shared_grads(model, shared_model)
 
             optimizer.step()
+
+            # log stats
+            if summvary_writer is not None:
+                summvary_writer.add_histogram('train/policy/spatial',
+                                              spatial_policy_vb.data.numpy(),
+                                              global_counter.value)
+                summvary_writer.add_histogram('train/policy/non_spatial',
+                                              non_spatial_policy_vb.data.numpy(),
+                                              global_counter.value)
+                summvary_writer.add_scalar('train/loss/policy',
+                                           policy_loss_vb[0][0],
+                                           global_counter.value)
+                summvary_writer.add_scalar('train/loss/value',
+                                           value_loss_vb[0][0],
+                                           global_counter.value)
