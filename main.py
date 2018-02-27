@@ -1,13 +1,14 @@
 import sys
 import argparse
+import torch.multiprocessing as mp
 
 from absl import flags
-import torch.multiprocessing as mp
+from tensorboardX import SummaryWriter
 
 from envs import GameInterfaceHandler
 from model import FullyConv
 from optim import SharedAdam
-from train import train_fn
+from worker import worker_fn
 from monitor import monitor_fn
 
 # workaround for pysc2 flags
@@ -37,11 +38,18 @@ parser.add_argument('--max-episode-length', type=int, default=100000, metavar='M
                     help='max length of an episode (default: 100000)')
 parser.add_argument('--map-name', default='FindAndDefeatZerglings', metavar='MAP',
                     help='environment(mini map) to train on (default: FindAndDefeatZerglings)')
+parser.add_argument('--model-dir', default='trained_models/', metavar='MD',
+                    help='folder to save/load trained models')
+parser.add_argument('--log-dir', default='logs/', metavar='LD',
+                    help='folder to save logs')
+parser.add_argument('--reset', type=bool, default=False, metavar='R',
+                    help='If set, delete the existing model and start training from scratch')
 
 
 def main():
     mp.set_start_method('spawn')
     args = parser.parse_args()
+    summary_writer = SummaryWriter('{0}{1}'.format(args.log_dir, args.map_name))
 
     game_intf = GameInterfaceHandler()
     # critic
@@ -51,6 +59,17 @@ def main():
         game_intf.screen_resolution,
         game_intf.num_action,
         args.lstm)
+    summary_writer.add_graph(shared_model)
+
+    if not reset:
+        try:
+            model_file = '{0}{1}.dat'.format(args.model_dir, args.map_name)
+            saved_state = torch.load(model_file)
+            summary_writer.add_text('log', 'Reuse trained model {0}'.format(model_file))
+        except FileNotFoundError as e:
+            summary_writer.add_text('log', 'No trained models found, start from scratch')
+    else:
+        summary_writer.add_text('log', 'Reset, start from scratch')
     shared_model.share_memory()
 
     optimizer = SharedAdam(shared_model.parameters(), lr=args.lr)
@@ -61,17 +80,18 @@ def main():
 
     global_counter = mp.Value('i', 0)
 
-    # each actor_thread creates its own environment and trains agents
+    # each worker_thread creates its own environment and trains agents
     for rank in range(args.num_processes):
-        actor_thread = mp.Process(
-            target=train_fn, args=(rank, args, shared_model, global_counter, optimizer))
-        actor_thread.daemon = True
-        actor_thread.start()
-        processes.append(actor_thread)
+        worker_summary_writer = summary_writer if rank == 0 else None
+        worker_thread = mp.Process(
+            target=worker_fn, args=(rank, args, shared_model, global_counter, worker_summary_writer, optimizer))
+        worker_thread.daemon = True
+        worker_thread.start()
+        processes.append(worker_thread)
 
     # start a thread for policy evaluation
     monitor_thread = mp.Process(
-        target=monitor_fn, args=(args.num_processes, args, shared_model, global_counter))
+        target=monitor_fn, args=(args.num_processes, args, shared_model, global_counter, summary_writer))
     monitor_thread.daemon = True
     monitor_thread.start()
     processes.append(monitor_thread)
