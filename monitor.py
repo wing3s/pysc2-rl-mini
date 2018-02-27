@@ -9,9 +9,10 @@ from envs import GameInterfaceHandler
 from model import FullyConv
 
 
-def monitor_fn(rank, args, shared_model, global_counter, enable_summary=True):
-    if enable_summary:
-        summary_writer = SummaryWriter('{0}{1}'.format(args.log_dir, args.map_name))
+def monitor_fn(rank, args, shared_model, global_counter, summary_id):
+    summary_writer = None
+    if summary_id is not None:
+        summary_writer = SummaryWriter('{0}/{1}/{2}'.format(args.log_dir, args.map_name, summary_id))
     torch.manual_seed(args.seed + rank)
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
@@ -63,14 +64,14 @@ def monitor_fn(rank, args, shared_model, global_counter, enable_summary=True):
 
             if episode_done:
                 # log stats
-                if enable_summary:
+                if summary_writer is not None:
                     summary_writer.add_scalar('monitor/episode_reward', reward_sum, global_counter.value)
                     summary_writer.add_scalar('monitor/episode_length', episode_length, global_counter.value)
                 # save model
                 if reward_sum >= max_score:
                     max_score = reward_sum
                     model_state = model.state_dict()
-                    torch.save(model_state, '{0}{1}.dat'.format(args.model_dir, args.map_name))
+                    torch.save(model_state, '{0}/{1}.dat'.format(args.model_dir, args.map_name))
                 # reset stats and env
                 reward_sum = 0
                 episode_length = 0

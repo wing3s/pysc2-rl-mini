@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 import argparse
 import torch
 import torch.multiprocessing as mp
@@ -39,9 +40,9 @@ parser.add_argument('--max-episode-length', type=int, default=100000, metavar='M
                     help='max length of an episode (default: 100000)')
 parser.add_argument('--map-name', default='FindAndDefeatZerglings', metavar='MAP',
                     help='environment(mini map) to train on (default: FindAndDefeatZerglings)')
-parser.add_argument('--model-dir', default='trained_models/', metavar='MD',
+parser.add_argument('--model-dir', default='trained_models', metavar='MD',
                     help='folder to save/load trained models')
-parser.add_argument('--log-dir', default='logs/', metavar='LD',
+parser.add_argument('--log-dir', default='logs', metavar='LD',
                     help='folder to save logs')
 parser.add_argument('--reset', type=bool, default=False, metavar='R',
                     help='If set, delete the existing model and start training from scratch')
@@ -58,7 +59,9 @@ def init():
 
 def main():
     mp.set_start_method('spawn')
-    summary_writer = SummaryWriter('{0}{1}'.format(args.log_dir, args.map_name))
+    summary_id = int(time.time())
+    summary_writer = SummaryWriter(
+        '{0}/{1}/{2}'.format(args.log_dir, args.map_name, summary_id))
     game_intf = GameInterfaceHandler()
     # critic
     shared_model = FullyConv(
@@ -70,8 +73,8 @@ def main():
 
     if not args.reset:
         try:
-            model_file = '{0}{1}.dat'.format(args.model_dir, args.map_name)
-            saved_state = torch.load(model_file)
+            model_file = '{0}/{1}.dat'.format(args.model_dir, args.map_name)
+            shared_model.load_state_dict(torch.load(model_file))
             summary_writer.add_text('log', 'Reuse trained model {0}'.format(model_file))
         except FileNotFoundError as e:
             summary_writer.add_text('log', 'No trained models found, start from scratch')
@@ -89,16 +92,17 @@ def main():
 
     # each worker_thread creates its own environment and trains agents
     for rank in range(args.num_processes):
-        enable_summary = True if rank == 0 else False
+        # only write summaries in one of the workers, since they are identical
+        worker_summary_id = summary_id if rank == 0 else None
         worker_thread = mp.Process(
-            target=worker_fn, args=(rank, args, shared_model, global_counter, enable_summary, optimizer))
+            target=worker_fn, args=(rank, args, shared_model, global_counter, worker_summary_id, optimizer))
         worker_thread.daemon = True
         worker_thread.start()
         processes.append(worker_thread)
 
     # start a thread for policy evaluation
     monitor_thread = mp.Process(
-        target=monitor_fn, args=(args.num_processes, args, shared_model, global_counter, True))
+        target=monitor_fn, args=(args.num_processes, args, shared_model, global_counter, summary_id))
     monitor_thread.daemon = True
     monitor_thread.start()
     processes.append(monitor_thread)

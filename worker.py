@@ -19,9 +19,10 @@ def ensure_shared_grads(model, shared_model):
         shared_param._grad = local_param.grad  # pylint: disable=W0212
 
 
-def worker_fn(rank, args, shared_model, global_counter, enable_summary, optimizer):
-    if enable_summary:
-        summary_writer = SummaryWriter('{0}{1}'.format(args.log_dir, args.map_name))
+def worker_fn(rank, args, shared_model, global_counter, summary_id, optimizer):
+    summary_writer = None
+    if summary_id is not None:
+        summary_writer = SummaryWriter('{0}/{1}/{2}'.format(args.log_dir, args.map_name, summary_id))
     torch.manual_seed(args.seed + rank)
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
@@ -160,7 +161,7 @@ def worker_fn(rank, args, shared_model, global_counter, enable_summary, optimize
             optimizer.step()
 
             # log stats
-            if enable_summary:
+            if summary_writer is not None:
                 summary_writer.add_histogram('train/policy/spatial',
                                              spatial_policy_vb.data.numpy(),
                                              global_counter.value)
