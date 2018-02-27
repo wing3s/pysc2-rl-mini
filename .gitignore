@@ -169,6 +169,10 @@ test.py
 
 # models
 models/
+trained_models/
+
+# logs
+logs/
 
 # README
 ._README.md
