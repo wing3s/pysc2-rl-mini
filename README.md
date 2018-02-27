@@ -11,6 +11,13 @@ Python3 is required to resolve [multiprocessing issue](https://github.com/ikostr
 
 Detail installation [steps](#installation).
 
+## Training
+To train agent in "FindAndDefeatZerglings" mini game with 8 different worker threads:
+```bash
+python main.py --map-name FindAndDefeatZerglings --num-processes 8
+```
+Use `python main.py --help` to see all available options.
+
 ## <a id='installation'></a> Installation
 #### pytorch
 Follow instruction [here](http://pytorch.org) and chose OS, Package Manager, Python version and CUDA version accordingly.
