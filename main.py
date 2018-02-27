@@ -1,9 +1,10 @@
 import sys
+import os
 import argparse
+import torch
 import torch.multiprocessing as mp
-
-from absl import flags
 from tensorboardX import SummaryWriter
+from absl import flags
 
 from envs import GameInterfaceHandler
 from model import FullyConv
@@ -45,12 +46,19 @@ parser.add_argument('--log-dir', default='logs/', metavar='LD',
 parser.add_argument('--reset', type=bool, default=False, metavar='R',
                     help='If set, delete the existing model and start training from scratch')
 
+args = parser.parse_args()
+
+
+def init():
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
+    if not os.path.exists(args.model_dir):
+        os.makedirs(args.model_dir)
+
 
 def main():
     mp.set_start_method('spawn')
-    args = parser.parse_args()
     summary_writer = SummaryWriter('{0}{1}'.format(args.log_dir, args.map_name))
-
     game_intf = GameInterfaceHandler()
     # critic
     shared_model = FullyConv(
@@ -59,9 +67,8 @@ def main():
         game_intf.screen_resolution,
         game_intf.num_action,
         args.lstm)
-    summary_writer.add_graph(shared_model)
 
-    if not reset:
+    if not args.reset:
         try:
             model_file = '{0}{1}.dat'.format(args.model_dir, args.map_name)
             saved_state = torch.load(model_file)
@@ -82,16 +89,16 @@ def main():
 
     # each worker_thread creates its own environment and trains agents
     for rank in range(args.num_processes):
-        worker_summary_writer = summary_writer if rank == 0 else None
+        enable_summary = True if rank == 0 else False
         worker_thread = mp.Process(
-            target=worker_fn, args=(rank, args, shared_model, global_counter, worker_summary_writer, optimizer))
+            target=worker_fn, args=(rank, args, shared_model, global_counter, enable_summary, optimizer))
         worker_thread.daemon = True
         worker_thread.start()
         processes.append(worker_thread)
 
     # start a thread for policy evaluation
     monitor_thread = mp.Process(
-        target=monitor_fn, args=(args.num_processes, args, shared_model, global_counter, summary_writer))
+        target=monitor_fn, args=(args.num_processes, args, shared_model, global_counter, True))
     monitor_thread.daemon = True
     monitor_thread.start()
     processes.append(monitor_thread)
@@ -105,4 +112,5 @@ def main():
             process.terminate()
 
 if __name__ == '__main__':
+    init()
     main()
