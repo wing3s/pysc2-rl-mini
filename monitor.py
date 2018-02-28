@@ -7,12 +7,10 @@ from tensorboardX import SummaryWriter
 from envs import create_sc2_minigame_env
 from envs import GameInterfaceHandler
 from model import FullyConv
+from summary import Summary
 
 
-def monitor_fn(rank, args, shared_model, global_counter, summary_id):
-    summary_writer = None
-    if summary_id is not None:
-        summary_writer = SummaryWriter('{0}/{1}/{2}'.format(args.log_dir, args.map_name, summary_id))
+def monitor_fn(rank, args, shared_model, global_counter, summary_queue):
     torch.manual_seed(args.seed + rank)
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
@@ -64,9 +62,13 @@ def monitor_fn(rank, args, shared_model, global_counter, summary_id):
 
             if episode_done:
                 # log stats
-                if summary_writer is not None:
-                    summary_writer.add_scalar('monitor/episode_reward', reward_sum, global_counter.value)
-                    summary_writer.add_scalar('monitor/episode_length', episode_length, global_counter.value)
+                if summary_queue is not None:
+                    summary_queue.put(
+                        Summary(action='add_scalar', tag='monitor/episode_reward',
+                                value1=reward_sum, global_step=global_counter.value))
+                    summary_queue.put(
+                        Summary(action='add_scalar', tag='monitor/episode_length',
+                                value1=episode_length, global_step=global_counter.value))
                 # save model
                 if reward_sum >= max_score:
                     max_score = reward_sum

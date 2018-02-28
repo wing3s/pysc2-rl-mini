@@ -6,6 +6,7 @@ from tensorboardX import SummaryWriter
 from envs import create_sc2_minigame_env
 from envs import GameInterfaceHandler
 from model import FullyConv
+from summary import Summary
 
 
 def ensure_shared_grads(model, shared_model):
@@ -19,10 +20,7 @@ def ensure_shared_grads(model, shared_model):
         shared_param._grad = local_param.grad  # pylint: disable=W0212
 
 
-def worker_fn(rank, args, shared_model, global_counter, summary_id, optimizer):
-    summary_writer = None
-    if summary_id is not None:
-        summary_writer = SummaryWriter('{0}/{1}/{2}'.format(args.log_dir, args.map_name, summary_id))
+def worker_fn(rank, args, shared_model, global_counter, summary_queue, optimizer):
     torch.manual_seed(args.seed + rank)
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
@@ -161,16 +159,16 @@ def worker_fn(rank, args, shared_model, global_counter, summary_id, optimizer):
             optimizer.step()
 
             # log stats
-            if summary_writer is not None:
-                summary_writer.add_histogram('train/policy/spatial',
-                                             spatial_policy_vb.data.numpy(),
-                                             global_counter.value)
-                summary_writer.add_histogram('train/policy/non_spatial',
-                                             non_spatial_policy_vb.data.numpy(),
-                                             global_counter.value)
-                summary_writer.add_scalar('train/loss/policy',
-                                          policy_loss_vb[0][0],
-                                          global_counter.value)
-                summary_writer.add_scalar('train/loss/value',
-                                          value_loss_vb[0][0],
-                                          global_counter.value)
+            if summary_queue is not None:
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='train/policy/spatial',
+                            value1=spatial_policy_vb.data.numpy(), global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='train/policy/non_spatial',
+                            value1=non_spatial_policy_vb.data.numpy(), global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_scalar', tag='train/loss/policy',
+                            value1=policy_loss_vb[0][0], global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_scalar', tag='train/loss/value',
+                            value1=value_loss_vb[0][0], global_step=global_counter.value))

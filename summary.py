@@ -3,11 +3,11 @@ from tensorboardX import SummaryWriter
 
 
 def writer_fn(args, summary_id, msg_queue):
+    """subscriber listens to message queue to write to file"""
     summary_writer = SummaryWriter('{0}/{1}/{2}'.format(args.log_dir, args.map_name, summary_id))
     with summary_writer:
         while True:
             summary = msg_queue.get()
-            print(summary)
             if summary.action in ['add_scalar', 'add_text', 'add_histogram']:
                 action = getattr(summary_writer, summary.action)
                 action(summary.tag, summary.value1, summary.global_step)
