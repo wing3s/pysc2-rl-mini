@@ -116,7 +116,7 @@ def worker_fn(rank, args, shared_model, global_counter, summary_queue, optimizer
                 info_vb = Variable(
                     torch.from_numpy(game_intf.get_info(state.observation)))
                 valid_action_vb = Variable(
-                    torch.from_numpy(game_intf.get_available_actions(state.observation)), requires_grad=False)
+                    torch.from_numpy(game_intf.get_available_actions(state.observation)))
                 value_vb, _, _, _, _, _ = model(minimap_vb, screen_vb, info_vb, valid_action_vb, None)
                 R_ts = value_vb.data
 
@@ -145,7 +145,7 @@ def worker_fn(rank, args, shared_model, global_counter, summary_queue, optimizer
                 # Since we want to max this value, we define policy loss as negative
                 # NOTE: the negative entropy term  encourages exploration
                 policy_log_for_action_vb = spatial_policy_log_for_action_vbs[i] + non_spatial_policy_log_for_action_vbs[i]
-                policy_loss_vb += -(policy_log_for_action_vb * Variable(gae_ts) + 0.01 * entropies[i])
+                policy_loss_vb += -(policy_log_for_action_vb * Variable(gae_ts) + 0.1 * entropies[i])
 
             optimizer.zero_grad()
 
@@ -153,18 +153,22 @@ def worker_fn(rank, args, shared_model, global_counter, summary_queue, optimizer
             loss_vb.backward()
 
             # prevent gradient explosion
-            torch.nn.utils.clip_grad_norm(model.parameters(), 1)
+            torch.nn.utils.clip_grad_norm(model.parameters(), 40)
             ensure_shared_grads(model, shared_model)
 
             optimizer.step()
 
             # log stats
             if summary_queue is not None:
+                # np.savetxt('{0}/{1}-{2}.out'.format(
+                #     args.log_dir, "spatial_policy_vb", global_counter.value), spatial_policy_vb.data.numpy())
+                # np.savetxt('{0}/{1}-{2}.out'.format(
+                #     args.log_dir, "non_spatial_policy_vb", global_counter.value), non_spatial_policy_vb.data.numpy())
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/policy/spatial',
+                    Summary(action='add_histogram', tag='train/policy/spatial_vb)',
                             value1=spatial_policy_vb.data.numpy(), global_step=global_counter.value))
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/policy/non_spatial',
+                    Summary(action='add_histogram', tag='train/policy/non_spatial_vb',
                             value1=non_spatial_policy_vb.data.numpy(), global_step=global_counter.value))
                 summary_queue.put(
                     Summary(action='add_scalar', tag='train/loss/policy',
@@ -172,3 +176,30 @@ def worker_fn(rank, args, shared_model, global_counter, summary_queue, optimizer
                 summary_queue.put(
                     Summary(action='add_scalar', tag='train/loss/value',
                             value1=value_loss_vb[0][0], global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='train/model/mconv1',
+                            value1=model.mconv1.weight.data.numpy(), global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='train/model/mconv2',
+                            value1=model.mconv2.weight.data.numpy(), global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='train/model/sconv1',
+                            value1=model.sconv1.weight.data.numpy(), global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='train/model/sconv2',
+                            value1=model.sconv2.weight.data.numpy(), global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='train/model/sa_conv3',
+                            value1=model.sa_conv3.weight.data.numpy(), global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='train/model/ns_fc3',
+                            value1=model.ns_fc3.weight.data.numpy(), global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='train/model/nsa_fc4',
+                            value1=model.nsa_fc4.weight.data.numpy(), global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='train/model/nsc_fc4',
+                            value1=model.nsc_fc4.weight.data.numpy(), global_step=global_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='train/train/entropy',
+                            value1=np.array(entropies), global_step=global_counter.value))
