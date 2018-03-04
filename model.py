@@ -121,14 +121,14 @@ class FullyConv(torch.nn.Module):
     def forward(self, minimap_vb, screen_vb, info_vb, valid_action_vb, lstm_hidden_vb=None):
         """
             Args:
-                minimap_vb, shape (N, # of channel, width, height)
-                screen_vb, shape (N, # of channel, width, height)
-                info_vb, shape (len(info))
-                valid_action_vb, shape (len(observation['available_actions]))
+                minimap_vb, (N, # of channel, width, height)
+                screen_vb, (N, # of channel, width, height)
+                info_vb, (len(info))
+                valid_action_vb, (len(observation['available_actions])) same as (num_actions)
             Returns:
-                value_vb, shape (1, 1)
-                spatial_policy_vb, shape (1, s*s)
-                non_spatial_policy_vb, shape (1, num_actions)
+                value_vb, (1, 1)
+                spatial_policy_vb, (1, s*s)
+                non_spatial_policy_vb, (1, num_actions)
                 lstm_hidden variables
             TODO: implement lstm
         """
@@ -162,7 +162,7 @@ class FullyConv(torch.nn.Module):
         non_spatial_policy_vb = self._mask_unavailable_actions(
             non_spatial_policy_vb, valid_action_vb)
         non_spatial_policy_log_vb = F.log_softmax(x_non_spatial_policy, dim=1)
-        non_spatial_policy_log_vb = self._mask_unavailable_actions(
+        non_spatial_policy_log_vb = self._mask_unavailable_actions_log(
             non_spatial_policy_log_vb, valid_action_vb
         )
 
@@ -173,11 +173,24 @@ class FullyConv(torch.nn.Module):
     def _mask_unavailable_actions(self, policy_vb, valid_action_vb):
         """
             Args:
-                policy_vb, shape (num_actions)
-                valid_action_vb, shape (num_actions)
+                policy_vb, (1, num_actions)
+                valid_action_vb, (num_actions)
             Returns:
-                masked_policy_vb, shape (num_actions)
+                masked_policy_vb, (1, num_actions)
         """
         masked_policy_vb = policy_vb * valid_action_vb
         masked_policy_vb /= masked_policy_vb.sum(1)
+        return masked_policy_vb
+
+    def _mask_unavailable_actions_log(self, policy_vb, valid_action_vb):
+        """
+            Args:
+                policy_vb, (1, num_actions)
+                valid_action_vb, (num_actions)
+            Returns:
+                masked_policy_vb, (1, num_actions)
+        """
+        masked_policy_vb = policy_vb * valid_action_vb
+        masked_policy_vb -= torch.log(
+            (masked_policy_vb.exp() * valid_action_vb).sum(1))
         return masked_policy_vb
