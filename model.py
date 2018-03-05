@@ -192,5 +192,5 @@ class FullyConv(torch.nn.Module):
         """
         masked_policy_vb = policy_vb * valid_action_vb
         masked_policy_vb -= torch.log(
-            (masked_policy_vb.exp() * valid_action_vb).sum(1))
+            (masked_policy_vb.exp() * valid_action_vb).sum(1)) * valid_action_vb
         return masked_policy_vb
