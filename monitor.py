@@ -32,9 +32,9 @@ def monitor_fn(rank, args, shared_model, global_counter, summary_queue):
         episode_length = 0
 
         while True:
-            model.load_state_dict(shared_model.state_dict())
 
             if episode_done:
+                model.load_state_dict(shared_model.state_dict())
                 # TODO: reset lstm variables
                 pass
 
