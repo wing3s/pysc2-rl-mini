@@ -83,6 +83,9 @@ def main():
     else:
         summary_queue.put(
             Summary(action='add_text', tag='log', value1='Reset, start from scratch'))
+    summary_queue.put(
+        Summary(action='add_text', tag='log', value1='Main process pid: {0}'.format(os.getpid()))
+    )
     shared_model.share_memory()
 
     optimizer = SharedAdam(shared_model.parameters(), lr=args.lr)
@@ -121,7 +124,7 @@ def main():
     try:
         for process in processes:
             process.join()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         for process in processes:
             process.terminate()
 
