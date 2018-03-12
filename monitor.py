@@ -10,7 +10,7 @@ from model import FullyConv
 from summary import Summary
 
 
-def monitor_fn(rank, args, shared_model, global_counter, summary_queue):
+def monitor_fn(rank, args, shared_model, global_episode_counter, summary_queue):
     torch.manual_seed(args.seed + rank)
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
@@ -65,10 +65,10 @@ def monitor_fn(rank, args, shared_model, global_counter, summary_queue):
                 if summary_queue is not None:
                     summary_queue.put(
                         Summary(action='add_scalar', tag='monitor/episode_reward',
-                                value1=reward_sum, global_step=global_counter.value))
+                                value1=reward_sum, global_step=global_episode_counter.value))
                     summary_queue.put(
                         Summary(action='add_scalar', tag='monitor/episode_length',
-                                value1=episode_length, global_step=global_counter.value))
+                                value1=episode_length, global_step=global_episode_counter.value))
                 # save model
                 if reward_sum >= max_score:
                     max_score = reward_sum
@@ -78,4 +78,4 @@ def monitor_fn(rank, args, shared_model, global_counter, summary_queue):
                 reward_sum = 0
                 episode_length = 0
                 state = env.reset()[0]  # single player
-                time.sleep(10)
+                time.sleep(3)

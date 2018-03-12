@@ -20,7 +20,7 @@ def ensure_shared_grads(model, shared_model):
         shared_param._grad = local_param.grad  # pylint: disable=W0212
 
 
-def worker_fn(rank, args, shared_model, global_counter, summary_queue, optimizer):
+def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, optimizer):
     torch.manual_seed(args.seed + rank)
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
@@ -97,9 +97,9 @@ def worker_fn(rank, args, shared_model, global_counter, summary_queue, optimizer
                 rewards.append(reward)
 
                 episode_length += 1
-                global_counter.value += 1
 
                 if episode_done:
+                    global_episode_counter.value += 1
                     episode_length = 0
                     state = env.reset()[0]
                     break
@@ -160,46 +160,71 @@ def worker_fn(rank, args, shared_model, global_counter, summary_queue, optimizer
 
             # log stats
             if summary_queue is not None:
-                # np.savetxt('{0}/{1}-{2}.out'.format(
-                #     args.log_dir, "spatial_policy_vb", global_counter.value), spatial_policy_vb.data.numpy())
-                # np.savetxt('{0}/{1}-{2}.out'.format(
-                #     args.log_dir, "non_spatial_policy_vb", global_counter.value), non_spatial_policy_vb.data.numpy())
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/policy/spatial_vb)',
-                            value1=spatial_policy_vb.data.numpy(), global_step=global_counter.value))
+                    Summary(action='add_scalar', tag='train/policy_loss',
+                            value1=policy_loss_vb[0][0], global_step=global_episode_counter.value))
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/policy/non_spatial_vb',
-                            value1=non_spatial_policy_vb.data.numpy(), global_step=global_counter.value))
+                    Summary(action='add_scalar', tag='train/value_loss',
+                            value1=value_loss_vb[0][0], global_step=global_episode_counter.value))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/loss/policy',
-                            value1=policy_loss_vb[0][0], global_step=global_counter.value))
+                    Summary(action='add_scalar', tag='train/rewards/sum',
+                            value1=np.array(rewards).sum(), global_step=global_episode_counter.value))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/loss/value',
-                            value1=value_loss_vb[0][0], global_step=global_counter.value))
+                    Summary(action='add_scalar', tag='train/entropies/mean',
+                            value1=np.array(entropies).mean(), global_step=global_episode_counter.value))
+
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/model/mconv1',
-                            value1=model.mconv1.weight.data.numpy(), global_step=global_counter.value))
+                    Summary(action='add_histogram', tag='policy/spatial_vb)',
+                            value1=spatial_policy_vb.data.numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/model/mconv2',
-                            value1=model.mconv2.weight.data.numpy(), global_step=global_counter.value))
+                    Summary(action='add_histogram', tag='policy/non_spatial_vb',
+                            value1=non_spatial_policy_vb.data.numpy(), global_step=global_episode_counter.value))
+
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/model/sconv1',
-                            value1=model.sconv1.weight.data.numpy(), global_step=global_counter.value))
+                    Summary(action='add_histogram', tag='model/mconv1_weight',
+                            value1=model.mconv1.weight.data.numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/model/sconv2',
-                            value1=model.sconv2.weight.data.numpy(), global_step=global_counter.value))
+                    Summary(action='add_histogram', tag='model/mconv1_bias',
+                            value1=model.mconv1.bias.data.numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/model/sa_conv3',
-                            value1=model.sa_conv3.weight.data.numpy(), global_step=global_counter.value))
+                    Summary(action='add_histogram', tag='model/mconv2_weight',
+                            value1=model.mconv2.weight.data.numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/model/ns_fc3',
-                            value1=model.ns_fc3.weight.data.numpy(), global_step=global_counter.value))
+                    Summary(action='add_histogram', tag='model/mconv2_bias',
+                            value1=model.mconv2.bias.data.numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/model/nsa_fc4',
-                            value1=model.nsa_fc4.weight.data.numpy(), global_step=global_counter.value))
+                    Summary(action='add_histogram', tag='model/sconv1_weight',
+                            value1=model.sconv1.weight.data.numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/model/nsc_fc4',
-                            value1=model.nsc_fc4.weight.data.numpy(), global_step=global_counter.value))
+                    Summary(action='add_histogram', tag='model/sconv1_bias',
+                            value1=model.sconv1.bias.data.numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='train/train/entropy',
-                            value1=np.array(entropies), global_step=global_counter.value))
+                    Summary(action='add_histogram', tag='model/sconv2_weight',
+                            value1=model.sconv2.weight.data.numpy(), global_step=global_episode_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='model/sconv2_bias',
+                            value1=model.sconv2.bias.data.numpy(), global_step=global_episode_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='model/sa_conv3_weight',
+                            value1=model.sa_conv3.weight.data.numpy(), global_step=global_episode_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='model/sa_conv3_bias',
+                            value1=model.sa_conv3.bias.data.numpy(), global_step=global_episode_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='model/ns_fc3_weight',
+                            value1=model.ns_fc3.weight.data.numpy(), global_step=global_episode_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='model/ns_fc3_bias',
+                            value1=model.ns_fc3.bias.data.numpy(), global_step=global_episode_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='model/nsa_fc4_weight',
+                            value1=model.nsa_fc4.weight.data.numpy(), global_step=global_episode_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='model/nsa_fc4_bias',
+                            value1=model.nsa_fc4.bias.data.numpy(), global_step=global_episode_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='model/nsc_fc4_weight',
+                            value1=model.nsc_fc4.weight.data.numpy(), global_step=global_episode_counter.value))
+                summary_queue.put(
+                    Summary(action='add_histogram', tag='model/nsc_fc4_bias',
+                            value1=model.nsc_fc4.bias.data.numpy(), global_step=global_episode_counter.value))
