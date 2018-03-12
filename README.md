@@ -9,12 +9,23 @@ Python3 is required to resolve [multiprocessing issue](https://github.com/ikostr
 
 Detail installation [steps](#installation).
 
-## Training
+## Usage
+- `<project_path>`: full path of this repo in local environment
+- `<hose_name>`: host name of local environment (ex. `localhost`) 
+### Train
 To train agent in "FindAndDefeatZerglings" mini game with 8 different worker threads:
 ```bash
+cd <project_path>
 python main.py --map-name FindAndDefeatZerglings --num-processes 8
 ```
 Use `python main.py --help` to see all available options.
+
+### Monitor
+To visualize training progress stats, run Tensorboard (tensorflow required).
+```bash
+tensorboard --logdir <project_path>/logs
+```
+Then open the link [http://<host_name>:6006](http://<host_name>:6006) in browser.
 
 ## <a id='installation'></a> Installation
 #### pytorch
@@ -38,6 +49,6 @@ pip install pysc2
 #### tensorboardX
 ```bash
 pip install git+https://github.com/lanpa/tensorboard-pytorch
-# TensorFlow is required
+# TensorFlow is required for dashboard visualization
 pip install tensorflow
 ```
