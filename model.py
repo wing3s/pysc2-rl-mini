@@ -3,8 +3,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from torch.nn import init
 from torch.nn.utils import weight_norm
 from torch.autograd import Variable
+
+
+def init_weights(model):
+    if type(model) in [nn.Linear, nn.Conv2d]:
+        init.xavier_uniform(model.weight)
+        init.constant(model.bias, 0)
+    elif type(model) in [nn.LSTMCell]:
+        init.constant(model.bias_ih, 0)
+        init.constant(model.bias_hh, 0)
 
 
 class ActorCritic(torch.nn.Module):
@@ -98,24 +108,7 @@ class FullyConv(torch.nn.Module):
         # non spatial critic
         self.nsc_fc4 = nn.Linear(256, 1)
 
-        # apply Xavier weights initializatioin
-        torch.nn.init.xavier_uniform(self.mconv1.weight)
-        torch.nn.init.xavier_uniform(self.mconv2.weight)
-        torch.nn.init.xavier_uniform(self.sconv1.weight)
-        torch.nn.init.xavier_uniform(self.sconv2.weight)
-        torch.nn.init.xavier_uniform(self.sa_conv3.weight)
-        torch.nn.init.xavier_uniform(self.ns_fc3.weight)
-        torch.nn.init.xavier_uniform(self.nsa_fc4.weight)
-        torch.nn.init.xavier_uniform(self.nsc_fc4.weight)
-
-        # apply normalized weight
-        self.ns_fc3 = weight_norm(self.ns_fc3)
-        self.nsa_fc4 = weight_norm(self.nsa_fc4)
-        self.nsc_fc4 = weight_norm(self.nsc_fc4)
-        self.ns_fc3.bias.data.fill_(0)
-        self.nsa_fc4.bias.data.fill_(0)
-        self.nsc_fc4.bias.data.fill_(0)
-
+        self.apply(init_weights)
         self.train()
 
     def forward(self, minimap_vb, screen_vb, info_vb, valid_action_vb, lstm_hidden_vb=None):
