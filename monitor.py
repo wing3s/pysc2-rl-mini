@@ -78,4 +78,4 @@ def monitor_fn(rank, args, shared_model, global_episode_counter, summary_queue):
                 reward_sum = 0
                 episode_length = 0
                 state = env.reset()[0]  # single player
-                time.sleep(3)
+                time.sleep(5)
