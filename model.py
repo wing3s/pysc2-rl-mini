@@ -172,7 +172,9 @@ class FullyConv(torch.nn.Module):
                 masked_policy_vb, (1, num_actions)
         """
         masked_policy_vb = policy_vb * valid_action_vb
-        masked_policy_vb /= masked_policy_vb.sum(1) + 1e-8
+        if masked_policy_vb.data.sum() == 0:
+            masked_policy_vb += valid_action_vb
+        masked_policy_vb /= masked_policy_vb.sum(1)
         return masked_policy_vb
 
     def _mask_unavailable_actions_log(self, policy_vb, valid_action_vb):
