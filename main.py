@@ -39,6 +39,8 @@ parser.add_argument('--num-forward-steps', type=int, default=20, metavar='NS',
                     help='number of forward steps in A3C (default: 20)')
 parser.add_argument('--max-episode-length', type=int, default=100000, metavar='M',
                     help='max length of an episode (default: 100000)')
+parser.add_argument('--summary-iters', type=int, default=10, metavar='SI',
+                    help='record training summary afte this many update iterations (default: 10)')
 parser.add_argument('--map-name', default='FindAndDefeatZerglings', metavar='MAP',
                     help='environment(mini map) to train on (default: FindAndDefeatZerglings)')
 parser.add_argument('--model-dir', default='trained_models', metavar='MD',
@@ -95,21 +97,21 @@ def main():
     # multiprocesses, Hogwild! style update
     processes = []
 
-    global_counter = mp.Value('i', 0)
+    global_episode_counter = mp.Value('i', 0)
 
     # each worker_thread creates its own environment and trains agents
     for rank in range(args.num_processes):
         # only write summaries in one of the workers, since they are identical
         worker_summary_queue = summary_queue if rank == 0 else None
         worker_thread = mp.Process(
-            target=worker_fn, args=(rank, args, shared_model, global_counter, worker_summary_queue, optimizer))
+            target=worker_fn, args=(rank, args, shared_model, global_episode_counter, worker_summary_queue, optimizer))
         worker_thread.daemon = True
         worker_thread.start()
         processes.append(worker_thread)
 
     # start a thread for policy evaluation
     monitor_thread = mp.Process(
-        target=monitor_fn, args=(args.num_processes, args, shared_model, global_counter, summary_queue))
+        target=monitor_fn, args=(args.num_processes, args, shared_model, global_episode_counter, summary_queue))
     monitor_thread.daemon = True
     monitor_thread.start()
     processes.append(monitor_thread)
