@@ -59,6 +59,7 @@ def init():
 
 
 def main():
+    os.environ['OMP_NUM_THREADS'] = '1'  # still required for CPU performance
     mp.set_start_method('spawn')
     summary_id = int(time.time())
     summary_queue = mp.Queue()
