@@ -154,7 +154,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
             loss_vb.backward()
 
             # prevent gradient explosion
-            torch.nn.utils.clip_grad_norm(model.parameters(), 1)
+            torch.nn.utils.clip_grad_norm(model.parameters(), 10)
             ensure_shared_grads(model, shared_model)
 
             optimizer.step()

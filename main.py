@@ -21,8 +21,8 @@ FLAGS([__file__])
 parser = argparse.ArgumentParser(description='A3C')
 
 # model parameters
-parser.add_argument('--lr', type=float, default=0.0001, metavar='LR',
-                    help='learning rate (default: 0.0001)')
+parser.add_argument('--lr', type=float, default=1e-5, metavar='LR',
+                    help='learning rate (default: 1e-5)')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for rewards (default: 0.99)')
 parser.add_argument('--tau', type=float, default=1.00, metavar='T',
@@ -39,8 +39,8 @@ parser.add_argument('--num-forward-steps', type=int, default=20, metavar='NS',
                     help='number of forward steps in A3C (default: 20)')
 parser.add_argument('--max-episode-length', type=int, default=100000, metavar='M',
                     help='max length of an episode (default: 100000)')
-parser.add_argument('--summary-iters', type=int, default=10, metavar='SI',
-                    help='record training summary afte this many update iterations (default: 10)')
+parser.add_argument('--summary-iters', type=int, default=8, metavar='SI',
+                    help='record training summary afte this many update iterations (default: 8)')
 parser.add_argument('--map-name', default='FindAndDefeatZerglings', metavar='MAP',
                     help='environment(mini map) to train on (default: FindAndDefeatZerglings)')
 parser.add_argument('--model-dir', default='trained_models', metavar='MD',
@@ -108,6 +108,7 @@ def main():
         worker_thread.daemon = True
         worker_thread.start()
         processes.append(worker_thread)
+        time.sleep(2)
 
     # start a thread for policy evaluation
     monitor_thread = mp.Process(
