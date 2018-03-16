@@ -1,7 +1,7 @@
 step_mul: 8  # 180 APM
-screen:
-    y_res: 64  # at least 64^2 resolution is recommended to be playable
-    x_res: 64
+screen:  # at least 64^2 resolution is recommended to be playable for regular map
+    y_res: 32  # use 32^32 for mini games here
+    x_res: 32
 minimap:
-    y_res: 64
-    x_res: 64
+    y_res: 32
+    x_res: 32
