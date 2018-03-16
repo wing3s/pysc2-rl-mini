@@ -50,7 +50,7 @@ parser.add_argument('--log-dir', default='output/logs', metavar='LD',
                     help='folder to save logs (default: .output/logs)')
 parser.add_argument('--summary-dir', default='output/summaries', metavar='LD',
                     help='folder to save summaries for Tensorboard (default: .output/summaries)')
-parser.add_argument('--reset', type=bool, default=False, metavar='R',
+parser.add_argument('--reset', action='store_true',
                     help='If set, delete the existing model and start training from scratch')
 
 args = parser.parse_args()
@@ -85,20 +85,19 @@ def main():
             shared_model.load_state_dict(torch.load(model_f_path))
             with open(counter_f_path, 'r') as counter_f:
                 global_episode_counter_val = int(counter_f.readline())
-            summary_queue.put(
-                Summary(action='add_text', tag='log',
-                        value1='Reuse trained model {0}, from global_counter: {1}'.format(model_f_path, global_episode_counter_val)))
+                summary_queue.put(
+                    Summary(action='add_text', tag='log',
+                            value1='Reuse trained model {0}, from global_counter: {1}'.format(model_f_path, global_episode_counter_val)))
         except FileNotFoundError as e:
             summary_queue.put(
-                Summary(action='add_text', tag='log', value1='No trained models found, start from scratch'))
+                Summary(action='add_text', tag='log', value1='No model found -- Start from scratch, {0}'.format(str(e))))
     else:
         summary_queue.put(
-            Summary(action='add_text', tag='log', value1='Reset, start from scratch'))
+            Summary(action='add_text', tag='log', value1='Reset -- Start from scratch'))
     with open(counter_f_path, 'w+') as counter_f:
         counter_f.write(str(global_episode_counter_val))
     summary_queue.put(
-        Summary(action='add_text', tag='log', value1='Main process pid: {0}'.format(os.getpid()))
-    )
+        Summary(action='add_text', tag='log', value1='Main process pid: {0}'.format(os.getpid())))
     shared_model.share_memory()
 
     optimizer = SharedAdam(shared_model.parameters(), lr=args.lr)
@@ -136,8 +135,12 @@ def main():
 
     # wait for all processes to finish
     try:
+        killed_process_count = 0
         for process in processes:
             process.join()
+            killed_process_count += 1 if process.exitcode == 1 else 0
+            if killed_process_count >= len(processes) - 2:  # only monitor and writer alive
+                raise SystemExit
     except (KeyboardInterrupt, SystemExit):
         for process in processes:
             process.terminate()
