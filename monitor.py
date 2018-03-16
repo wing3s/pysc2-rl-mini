@@ -2,7 +2,6 @@ import time
 import numpy as np
 import torch
 from torch.autograd import Variable
-from tensorboardX import SummaryWriter
 
 from envs import create_sc2_minigame_env
 from envs import GameInterfaceHandler

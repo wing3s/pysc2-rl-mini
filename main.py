@@ -4,7 +4,6 @@ import time
 import argparse
 import torch
 import torch.multiprocessing as mp
-from tensorboardX import SummaryWriter
 from absl import flags
 
 from envs import GameInterfaceHandler
@@ -59,8 +58,9 @@ args = parser.parse_args()
 
 def init():
     for dir_path in [args.log_dir, args.model_dir, args.summary_dir]:
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
+        sub_dir_path = "{0}/{1}/{2}".format(dir_path, args.map_name, args.job_name)
+        if not os.path.exists(sub_dir_path):
+            os.makedirs(sub_dir_path)
 
 
 def main():
@@ -77,14 +77,14 @@ def main():
         args.lstm)
 
     # load or reset model file and logs
-    counter_f_path = '{0}/{1}/{2}/counter.log'.format(args.model_dir, args.map_name, args.job_name)
+    counter_f_path = '{0}/{1}/{2}/counter.log'.format(args.log_dir, args.map_name, args.job_name)
     global_episode_counter_val = 0
     if not args.reset:
         try:
             model_f_path = '{0}/{1}/{2}.dat'.format(args.model_dir, args.map_name, args.job_name)
             shared_model.load_state_dict(torch.load(model_f_path))
             with open(counter_f_path, 'r') as counter_f:
-                global_episode_counter_val = counter_f.readline()
+                global_episode_counter_val = int(counter_f.readline())
             summary_queue.put(
                 Summary(action='add_text', tag='log',
                         value1='Reuse trained model {0}, from global_counter: {1}'.format(model_f_path, global_episode_counter_val)))
@@ -94,8 +94,8 @@ def main():
     else:
         summary_queue.put(
             Summary(action='add_text', tag='log', value1='Reset, start from scratch'))
-    with open(counter_f_path, 'w') as counter_f:
-        counter_f.write(global_episode_counter_val)
+    with open(counter_f_path, 'w+') as counter_f:
+        counter_f.write(str(global_episode_counter_val))
     summary_queue.put(
         Summary(action='add_text', tag='log', value1='Main process pid: {0}'.format(os.getpid()))
     )
