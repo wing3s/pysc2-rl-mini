@@ -173,6 +173,7 @@ trained_models/
 
 # logs
 logs/
+output/
 
 # README
 ._README.md

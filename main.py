@@ -29,10 +29,12 @@ parser.add_argument('--tau', type=float, default=1.00, metavar='T',
                     help='parameter for GAE (default: 1.00)')
 parser.add_argument('--lstm', type=bool, default=True, metavar='LSTM',
                     help='enable LSTM (default: True)')
-parser.add_argument('--seed', type=int, default=1,
-                    help='random seed (default: 1)')
+parser.add_argument('--seed', type=int, default=123,
+                    help='random seed (default: 123)')
 
 # experiment parameters
+parser.add_argument('--job-name', default='default', metavar='JN',
+                    help='job name for identification (default: "default")')
 parser.add_argument('--num-processes', type=int, default=4, metavar='NP',
                     help='number of training processes to use (default: 4)')
 parser.add_argument('--num-forward-steps', type=int, default=20, metavar='NS',
@@ -43,10 +45,12 @@ parser.add_argument('--summary-iters', type=int, default=8, metavar='SI',
                     help='record training summary afte this many update iterations (default: 8)')
 parser.add_argument('--map-name', default='FindAndDefeatZerglings', metavar='MAP',
                     help='environment(mini map) to train on (default: FindAndDefeatZerglings)')
-parser.add_argument('--model-dir', default='trained_models', metavar='MD',
-                    help='folder to save/load trained models')
-parser.add_argument('--log-dir', default='logs', metavar='LD',
-                    help='folder to save logs')
+parser.add_argument('--model-dir', default='output/models', metavar='MD',
+                    help='folder to save/load trained models (default: .output/models)')
+parser.add_argument('--log-dir', default='output/logs', metavar='LD',
+                    help='folder to save logs (default: .output/logs)')
+parser.add_argument('--summary-dir', default='output/summaries', metavar='LD',
+                    help='folder to save summaries for Tensorboard (default: .output/summaries)')
 parser.add_argument('--reset', type=bool, default=False, metavar='R',
                     help='If set, delete the existing model and start training from scratch')
 
@@ -54,16 +58,14 @@ args = parser.parse_args()
 
 
 def init():
-    if not os.path.exists(args.log_dir):
-        os.makedirs(args.log_dir)
-    if not os.path.exists(args.model_dir):
-        os.makedirs(args.model_dir)
+    for dir_path in [args.log_dir, args.model_dir, args.summary_dir]:
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
 
 
 def main():
     os.environ['OMP_NUM_THREADS'] = '1'  # still required for CPU performance
     mp.set_start_method('spawn')
-    summary_id = int(time.time())
     summary_queue = mp.Queue()
     game_intf = GameInterfaceHandler()
     # critic
@@ -74,18 +76,26 @@ def main():
         game_intf.num_action,
         args.lstm)
 
+    # load or reset model file and logs
+    counter_f_path = '{0}/{1}/{2}/counter.log'.format(args.model_dir, args.map_name, args.job_name)
+    global_episode_counter_val = 0
     if not args.reset:
         try:
-            model_file = '{0}/{1}.dat'.format(args.model_dir, args.map_name)
-            shared_model.load_state_dict(torch.load(model_file))
+            model_f_path = '{0}/{1}/{2}.dat'.format(args.model_dir, args.map_name, args.job_name)
+            shared_model.load_state_dict(torch.load(model_f_path))
+            with open(counter_f_path, 'r') as counter_f:
+                global_episode_counter_val = counter_f.readline()
             summary_queue.put(
-                Summary(action='add_text', tag='log', value1='Reuse trained model {0}'.format(model_file)))
+                Summary(action='add_text', tag='log',
+                        value1='Reuse trained model {0}, from global_counter: {1}'.format(model_f_path, global_episode_counter_val)))
         except FileNotFoundError as e:
             summary_queue.put(
                 Summary(action='add_text', tag='log', value1='No trained models found, start from scratch'))
     else:
         summary_queue.put(
             Summary(action='add_text', tag='log', value1='Reset, start from scratch'))
+    with open(counter_f_path, 'w') as counter_f:
+        counter_f.write(global_episode_counter_val)
     summary_queue.put(
         Summary(action='add_text', tag='log', value1='Main process pid: {0}'.format(os.getpid()))
     )
@@ -97,7 +107,7 @@ def main():
     # multiprocesses, Hogwild! style update
     processes = []
 
-    global_episode_counter = mp.Value('i', 0)
+    global_episode_counter = mp.Value('i', global_episode_counter_val)
 
     # each worker_thread creates its own environment and trains agents
     for rank in range(args.num_processes):
@@ -119,7 +129,7 @@ def main():
 
     # summary writer thread
     summary_thread = mp.Process(
-        target=writer_fn, args=(args, summary_id, summary_queue))
+        target=writer_fn, args=(args, summary_queue))
     summary_thread.daemon = True
     summary_thread.start()
     processes.append(summary_thread)

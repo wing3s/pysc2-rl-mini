@@ -162,6 +162,9 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
 
             # log stats
             if summary_queue is not None and local_update_count % args.summary_iters == 0:
+                counter_f_path = '{0}/{1}/{2}/counter.log'.format(args.model_dir, args.map_name, args.job_name)
+                with open(counter_f_path, 'w') as counter_f:
+                    counter_f.write(global_episode_counter.value)
                 summary_queue.put(
                     Summary(action='add_scalar', tag='train/policy_loss',
                             value1=policy_loss_vb[0][0], global_step=global_episode_counter.value))
