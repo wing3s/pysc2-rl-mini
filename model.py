@@ -171,9 +171,9 @@ class FullyConv(torch.nn.Module):
             Returns:
                 masked_policy_vb, (1, num_actions)
         """
+        assert policy_vb.data.sum() > 0
+        assert valid_action_vb.data.sum() > 0
         masked_policy_vb = policy_vb * valid_action_vb
-        if masked_policy_vb.data.sum() == 0:
-            masked_policy_vb += valid_action_vb
         masked_policy_vb /= masked_policy_vb.sum(1)
         return masked_policy_vb
 
