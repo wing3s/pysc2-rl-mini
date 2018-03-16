@@ -143,7 +143,11 @@ def main():
                 raise SystemExit
     except (KeyboardInterrupt, SystemExit):
         for process in processes:
+            process_alive = process.is_alive()
             process.terminate()
+            if process_alive:
+                time.sleep(10)  # solve process terminated immediately with sc2 instance orphan
+            process.join()
 
 if __name__ == '__main__':
     init()
