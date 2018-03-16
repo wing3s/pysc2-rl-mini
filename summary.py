@@ -1,10 +1,13 @@
+import datetime
 import collections
 from tensorboardX import SummaryWriter
 
 
 def writer_fn(args, msg_queue):
     """subscriber listens to message queue to write to file"""
-    summary_writer = SummaryWriter('{0}/{1}/{2}'.format(args.summary_dir, args.map_name, args.job_name))
+    dt_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    summary_f_path = '{0}/{1}/{2}/{3}'.format(args.summary_dir, args.map_name, args.job_name, dt_str)
+    summary_writer = SummaryWriter(summary_f_path)
     with summary_writer:
         while True:
             summary = msg_queue.get()
