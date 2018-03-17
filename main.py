@@ -54,17 +54,16 @@ parser.add_argument('--summary-dir', default='output/summaries', metavar='LD',
 parser.add_argument('--reset', action='store_true',
                     help='If set, delete the existing model and start training from scratch')
 
-args = parser.parse_args()
 
-
-def init():
+def init_dirs(args):
     for dir_path in [args.log_dir, args.model_dir, args.summary_dir]:
         sub_dir_path = "{0}/{1}/{2}".format(dir_path, args.map_name, args.job_name)
         if not os.path.exists(sub_dir_path):
             os.makedirs(sub_dir_path)
 
 
-def main():
+def main(args):
+    init_dirs(args)
     os.environ['OMP_NUM_THREADS'] = '1'  # still required for CPU performance
     mp.set_start_method('spawn')
     summary_queue = mp.Queue()
@@ -151,5 +150,5 @@ def main():
             process.join()
 
 if __name__ == '__main__':
-    init()
-    main()
+    args = parser.parse_args()
+    main(args)
