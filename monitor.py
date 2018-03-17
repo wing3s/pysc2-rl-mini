@@ -31,6 +31,8 @@ def monitor_fn(rank, args, shared_model, global_episode_counter, summary_queue):
         episode_length = 0
 
         while True:
+            if 0 < args.max_k_episode * 1000 < global_episode_counter.value:
+                break
 
             if episode_done:
                 model.load_state_dict(shared_model.state_dict())

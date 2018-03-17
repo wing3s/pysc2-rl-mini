@@ -41,6 +41,9 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
 
         # TODO: verify stop condition
         while True:
+            if 0 < args.max_k_episode * 1000 <= global_episode_counter.value:
+                break
+
             # Sync from the global shared model
             model.load_state_dict(shared_model.state_dict())
 

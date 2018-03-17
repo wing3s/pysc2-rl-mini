@@ -33,26 +33,30 @@ parser.add_argument('--seed', type=int, default=123,
                     help='random seed (default: 123)')
 
 # experiment parameters
+parser.add_argument('--map-name', default='FindAndDefeatZerglings', metavar='MAP',
+                    help='environment(mini map) to train on (default: FindAndDefeatZerglings)')
 parser.add_argument('--job-name', default='default', metavar='JN',
                     help='job name for identification (default: "default")')
 parser.add_argument('--num-processes', type=int, default=4, metavar='NP',
                     help='number of training processes to use (default: 4)')
 parser.add_argument('--num-forward-steps', type=int, default=20, metavar='NS',
                     help='number of forward steps in A3C (default: 20)')
-parser.add_argument('--max-episode-length', type=int, default=100000, metavar='M',
+parser.add_argument('--max-episode-length', type=int, default=100000, metavar='MEL',
                     help='max length of an episode (default: 100000)')
-parser.add_argument('--summary-iters', type=int, default=8, metavar='SI',
-                    help='record training summary afte this many update iterations (default: 8)')
-parser.add_argument('--map-name', default='FindAndDefeatZerglings', metavar='MAP',
-                    help='environment(mini map) to train on (default: FindAndDefeatZerglings)')
+parser.add_argument('--max-k-episode', type=int, default=-1, metavar='MNE',
+                    help='max number of total episodes to run in thousands (default: infinite)')
+parser.add_argument('--reset', action='store_true',
+                    help='If set, delete the existing model and start training from scratch')
+
+# system parameters
 parser.add_argument('--model-dir', default='output/models', metavar='MD',
                     help='folder to save/load trained models (default: .output/models)')
 parser.add_argument('--log-dir', default='output/logs', metavar='LD',
                     help='folder to save logs (default: .output/logs)')
 parser.add_argument('--summary-dir', default='output/summaries', metavar='LD',
                     help='folder to save summaries for Tensorboard (default: .output/summaries)')
-parser.add_argument('--reset', action='store_true',
-                    help='If set, delete the existing model and start training from scratch')
+parser.add_argument('--summary-iters', type=int, default=8, metavar='SI',
+                    help='record training summary after this many update iterations (default: 8)')
 
 
 def init_dirs(args):
