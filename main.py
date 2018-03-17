@@ -1,5 +1,3 @@
-import sys
-import os
 import time
 import argparse
 import torch
@@ -69,7 +67,7 @@ def init_dirs(args):
 def main(args):
     init_dirs(args)
     os.environ['OMP_NUM_THREADS'] = '1'  # still required for CPU performance
-    mp.set_start_method('spawn')
+    mp.set_start_method('spawn')  # required to avoid Conv2d froze issue
     summary_queue = mp.Queue()
     game_intf = GameInterfaceHandler()
     # critic
@@ -143,7 +141,8 @@ def main(args):
         for process in processes:
             process.join()
             killed_process_count += 1 if process.exitcode == 1 else 0
-            if killed_process_count >= len(processes) - 2:  # only monitor and writer alive
+            if killed_process_count >= len(processes) - 2:
+                # exit if only monitor and writer alive
                 raise SystemExit
     except (KeyboardInterrupt, SystemExit):
         for process in processes:
