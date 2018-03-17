@@ -25,6 +25,10 @@ parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for rewards (default: 0.99)')
 parser.add_argument('--tau', type=float, default=1.00, metavar='T',
                     help='parameter for GAE (default: 1.00)')
+parser.add_argument('--entropy-weight', type=float, default=0.1, metavar='EW',
+                    help='weight of entropy loss (default: 0.1)')
+parser.add_argument('--max-grad-norm', type=float, default=10, metavar='MGN',
+                    help='max gradient norm to avoid explode (default:10)')
 parser.add_argument('--lstm', type=bool, default=True, metavar='LSTM',
                     help='enable LSTM (default: True)')
 parser.add_argument('--seed', type=int, default=123,

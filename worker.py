@@ -148,7 +148,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                 # Since we want to max this value, we define policy loss as negative
                 # NOTE: the negative entropy term  encourages exploration
                 policy_log_for_action_vb = spatial_policy_log_for_action_vbs[i] + non_spatial_policy_log_for_action_vbs[i]
-                policy_loss_vb += -(policy_log_for_action_vb * Variable(gae_ts) + 0.1 * entropies[i])
+                policy_loss_vb += -(policy_log_for_action_vb * Variable(gae_ts) + args.entropy_weight * entropies[i])
 
             optimizer.zero_grad()
 
@@ -156,7 +156,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
             loss_vb.backward()
 
             # prevent gradient explosion
-            torch.nn.utils.clip_grad_norm(model.parameters(), 10)
+            torch.nn.utils.clip_grad_norm(model.parameters(), args.max_grad_norm)
             ensure_shared_grads(model, shared_model)
 
             optimizer.step()
