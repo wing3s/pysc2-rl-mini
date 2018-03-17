@@ -1,8 +1,6 @@
 import sys
 import os
 import time
-import signal
-import psutil
 import argparse
 import torch
 import torch.multiprocessing as mp
@@ -14,6 +12,7 @@ from optim import SharedAdam
 from worker import worker_fn
 from monitor import monitor_fn
 from summary import writer_fn, Summary
+from utils.sysprocess import kill_child_processes
 
 # workaround for pysc2 flags
 FLAGS = flags.FLAGS
@@ -56,16 +55,6 @@ parser.add_argument('--reset', action='store_true',
                     help='If set, delete the existing model and start training from scratch')
 
 args = parser.parse_args()
-
-
-def kill_child_processes(parent_pid, sig=signal.SIGTERM):
-    try:
-        parent = psutil.Process(parent_pid)
-    except psutil.NoSuchProcess:
-        return
-    children = parent.children(recursive=True)
-    for process in children:
-        process.send_signal(sig)
 
 
 def init():
@@ -155,6 +144,8 @@ def main():
                 raise SystemExit
     except (KeyboardInterrupt, SystemExit):
         for process in processes:
+            # without killing child process, process.terminate() will cause orphans
+            # ref: https://thebearsenal.blogspot.com/2018/01/creation-of-orphan-process-in-linux.html
             kill_child_processes(process.pid)
             process.terminate()
             process.join()
