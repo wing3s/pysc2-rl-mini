@@ -4,6 +4,7 @@
 * [pytorch](https://github.com/pytorch/pytorch) v0.3.1
 * [StarCraft II (Linux)](https://github.com/Blizzard/s2client-proto#downloads) v.3.16.1
 * [tensorboardX (Tensorboard for Pytorch)](https://github.com/lanpa/tensorboard-pytorch) v1.0
+* [psutil](https://github.com/giampaolo/psutil)
 
 Python3 is required to resolve [multiprocessing issue](https://github.com/ikostrikov/pytorch-a3c/issues/37).
 
@@ -20,12 +21,24 @@ python main.py --map-name FindAndDefeatZerglings --num-processes 8
 ```
 Use `python main.py --help` to see all available options.
 
+To train with GPU, use `--gpu_ids` option. Default is CPU only.
+```bash
+# Use two GPUs for example
+python main.py --map-name FindAndDefeatZerglings --gpu_ids 0 1 --num-processes 8 
+```
+
 ### Monitor
 To visualize training progress stats, run Tensorboard (tensorflow required).
 ```bash
-tensorboard --logdir <project_path>/logs
+tensorboard --logdir <project_path>/output/summaries
 ```
 Then open the link [http://<host_name>:6006](http://<host_name>:6006) in browser.
+
+### Output
+All output files are located in `<project_path>/output` by default.
+- Trained models: `<project_path>/output/models`
+- Logs/Temp files: `<project_path>/output/logs`
+- Tensorboard summary logs: `<project_path>/output/summaries`
 
 ## <a id='installation'></a> Installation
 #### pytorch
@@ -52,3 +65,12 @@ pip install git+https://github.com/lanpa/tensorboard-pytorch
 # TensorFlow is required for dashboard visualization
 pip install tensorflow
 ```
+
+## References
+pytorch reinforcement learning
+- [pytorch-a3c](https://github.com/ikostrikov/pytorch-a3c) - pytorch A3c implementation
+- [rl_a3c_pytorch](https://github.com/dgriff777/rl_a3c_pytorch) - pytorch A3C with GPU
+
+pysc2 integratioin
+- [pysc2-agents](https://github.com/xhujoy/pysc2-agents) - pysc2 A3C agent with FullyConv model and epsilon greedy exploration by Tensorflow
+- [pysc2-rl-agents](https://github.com/simonmeister/pysc2-rl-agents) - pysc2 A2C agent with FullyConv model by Tensorflow
