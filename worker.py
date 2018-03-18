@@ -30,7 +30,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
     summary_iters = args.summary_iters
     if gpu_id >= 0:
         torch.cuda.manual_seed(args.seed + rank)
-        summary_iters *= 50  # send stats less frequent with GPU
+        summary_iters *= 10  # send stats less frequent with GPU
 
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
