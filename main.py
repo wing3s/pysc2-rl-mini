@@ -42,6 +42,8 @@ parser.add_argument('--job-name', default='default', metavar='JN',
                     help='job name for identification (default: "default")')
 parser.add_argument('--num-processes', type=int, default=4, metavar='NP',
                     help='number of training processes to use (default: 4)')
+parser.add_argument('--gpu-ids', type=int, default=[-1], nargs='+',
+                    help='GPUs to use [-1 CPU only] (default: -1)')
 parser.add_argument('--num-forward-steps', type=int, default=20, metavar='NS',
                     help='number of forward steps in A3C (default: 20)')
 parser.add_argument('--max-episode-length', type=int, default=100000, metavar='MEL',

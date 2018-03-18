@@ -6,9 +6,10 @@ from envs import create_sc2_minigame_env
 from envs import GameInterfaceHandler
 from model import FullyConv
 from summary import Summary
+from utils.gpu import cuda
 
 
-def ensure_shared_grads(model, shared_model):
+def ensure_shared_grads(model, shared_model, gpu_id):
     """ ensure proper initialization of global grad"""
     # NOTE: due to no backward passes has ever been ran on the global model
     # NOTE: ref: https://discuss.pytorch.org/t/problem-on-variable-grad-data/957
@@ -16,11 +17,21 @@ def ensure_shared_grads(model, shared_model):
                                          model.parameters()):
         if shared_param.grad is not None:
             return
-        shared_param._grad = local_param.grad  # pylint: disable=W0212
+        if gpu_id >= 0:
+            shared_param._grad = local_param.grad.clone().cpu()  # pylint: disable=W0212
+        else:
+            shared_param._grad = local_param.grad  # pylint: disable=W0212
 
 
 def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, optimizer):
+    gpu_id = args.gpu_ids[rank % len(args.gpu_ids)]
+
     torch.manual_seed(args.seed + rank)
+    summary_iters = args.summary_iters
+    if gpu_id >= 0:
+        torch.cuda.manual_seed(args.seed + rank)
+        summary_iters *= 50  # send stats less frequent with GPU
+
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
 
@@ -31,6 +42,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
             game_intf.screen_resolution,
             game_intf.num_action,
             args.lstm)
+        cuda(model, gpu_id)
         model.train()
 
         state = env.reset()[0]  # state as TimeStep object from single player
@@ -45,7 +57,11 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                 break
 
             # Sync from the global shared model
-            model.load_state_dict(shared_model.state_dict())
+            if gpu_id >= 0:
+                with torch.cuda.device(gpu_id):
+                    model.load_state_dict(shared_model.state_dict())
+            else:
+                model.load_state_dict(shared_model.state_dict())
 
             # start a new episode
             if episode_done:
@@ -61,10 +77,14 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
 
             # rollout, step forward n steps
             for step in range(args.num_forward_steps):
-                minimap_vb = Variable(torch.from_numpy(game_intf.get_minimap(state.observation)))
-                screen_vb = Variable(torch.from_numpy(game_intf.get_screen(state.observation)))
-                info_vb = Variable(torch.from_numpy(game_intf.get_info(state.observation)))
-                valid_action_vb = Variable(torch.from_numpy(game_intf.get_available_actions(state.observation)), requires_grad=False)
+                minimap_vb = Variable(
+                    cuda(torch.from_numpy(game_intf.get_minimap(state.observation)), gpu_id))
+                screen_vb = Variable(
+                    cuda(torch.from_numpy(game_intf.get_screen(state.observation)), gpu_id))
+                info_vb = Variable(
+                    cuda(torch.from_numpy(game_intf.get_info(state.observation)), gpu_id))
+                valid_action_vb = Variable(
+                    cuda(torch.from_numpy(game_intf.get_available_actions(state.observation)), gpu_id))
                 # TODO: if args.lstm, do model training with lstm
                 value_vb, spatial_policy_vb, spatial_policy_log_vb, non_spatial_policy_vb, non_spatial_policy_log_vb, lstm_hidden_vb = model(
                     minimap_vb, screen_vb, info_vb, valid_action_vb, None)
@@ -81,8 +101,8 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                 spatial_action_ts = spatial_policy_vb.multinomial().data
                 non_spatial_action_ts = non_spatial_policy_vb.multinomial().data
                 sc2_action = game_intf.postprocess_action(
-                    non_spatial_action_ts.numpy(),
-                    spatial_action_ts.numpy())
+                    non_spatial_action_ts.cpu().numpy(),
+                    spatial_action_ts.cpu().numpy())
                 # For a given state and action, compute the log of the policy at
                 # that action for that state.
                 spatial_policy_log_for_action_vb = spatial_policy_log_vb.gather(1, Variable(spatial_action_ts))
@@ -113,22 +133,22 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                 # bootstrap from last state
                 # TODO: if args.lstm
                 minimap_vb = Variable(
-                    torch.from_numpy(game_intf.get_minimap(state.observation)))
+                    cuda(torch.from_numpy(game_intf.get_minimap(state.observation)), gpu_id))
                 screen_vb = Variable(
-                    torch.from_numpy(game_intf.get_screen(state.observation)))
+                    cuda(torch.from_numpy(game_intf.get_screen(state.observation)), gpu_id))
                 info_vb = Variable(
-                    torch.from_numpy(game_intf.get_info(state.observation)))
+                    cuda(torch.from_numpy(game_intf.get_info(state.observation)), gpu_id))
                 valid_action_vb = Variable(
-                    torch.from_numpy(game_intf.get_available_actions(state.observation)))
+                    cuda(torch.from_numpy(game_intf.get_available_actions(state.observation)), gpu_id))
                 value_vb, _, _, _, _, _ = model(minimap_vb, screen_vb, info_vb, valid_action_vb, None)
                 R_ts = value_vb.data
 
-            R_vb = Variable(R_ts)
+            R_vb = Variable(cuda(R_ts, gpu_id))
             value_vbs.append(R_vb)
 
             policy_loss_vb = 0.
             value_loss_vb = 0.
-            gae_ts = torch.zeros(1, 1)
+            gae_ts = cuda(torch.zeros(1, 1), gpu_id)
             for i in reversed(range(len(rewards))):
                 R_vb = args.gamma * R_vb + rewards[i]
                 advantage_vb = R_vb - value_vbs[i]
@@ -157,13 +177,13 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
 
             # prevent gradient explosion
             torch.nn.utils.clip_grad_norm(model.parameters(), args.max_grad_norm)
-            ensure_shared_grads(model, shared_model)
+            ensure_shared_grads(model, shared_model, gpu_id)
 
             optimizer.step()
             local_update_count += 1
 
             # log stats
-            if summary_queue is not None and local_update_count % args.summary_iters == 0:
+            if summary_queue is not None and local_update_count % summary_iters == 0:
                 counter_f_path = '{0}/{1}/{2}/counter.log'.format(args.log_dir, args.map_name, args.job_name)
                 with open(counter_f_path, 'w') as counter_f:
                     counter_f.write(str(global_episode_counter.value))
@@ -180,59 +200,59 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                     Summary(action='add_scalar', tag='train/entropies/mean',
                             value1=np.array(entropies).mean(), global_step=global_episode_counter.value))
 
-            if summary_queue is not None and local_update_count % (args.summary_iters * 10) == 0:
+            if summary_queue is not None and local_update_count % (summary_iters * 10) == 0:
                 summary_queue.put(
                     Summary(action='add_histogram', tag='policy/spatial_vb)',
-                            value1=spatial_policy_vb.data.numpy(), global_step=global_episode_counter.value))
+                            value1=spatial_policy_vb.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='policy/non_spatial_vb',
-                            value1=non_spatial_policy_vb.data.numpy(), global_step=global_episode_counter.value))
+                            value1=non_spatial_policy_vb.data.cpu().numpy(), global_step=global_episode_counter.value))
 
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/mconv1_weight',
-                            value1=model.mconv1.weight.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.mconv1.weight.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/mconv1_bias',
-                            value1=model.mconv1.bias.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.mconv1.bias.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/mconv2_weight',
-                            value1=model.mconv2.weight.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.mconv2.weight.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/mconv2_bias',
-                            value1=model.mconv2.bias.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.mconv2.bias.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/sconv1_weight',
-                            value1=model.sconv1.weight.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.sconv1.weight.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/sconv1_bias',
-                            value1=model.sconv1.bias.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.sconv1.bias.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/sconv2_weight',
-                            value1=model.sconv2.weight.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.sconv2.weight.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/sconv2_bias',
-                            value1=model.sconv2.bias.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.sconv2.bias.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/sa_conv3_weight',
-                            value1=model.sa_conv3.weight.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.sa_conv3.weight.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/sa_conv3_bias',
-                            value1=model.sa_conv3.bias.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.sa_conv3.bias.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/ns_fc3_weight',
-                            value1=model.ns_fc3.weight.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.ns_fc3.weight.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/ns_fc3_bias',
-                            value1=model.ns_fc3.bias.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.ns_fc3.bias.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/nsa_fc4_weight',
-                            value1=model.nsa_fc4.weight.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.nsa_fc4.weight.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/nsa_fc4_bias',
-                            value1=model.nsa_fc4.bias.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.nsa_fc4.bias.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/nsc_fc4_weight',
-                            value1=model.nsc_fc4.weight.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.nsc_fc4.weight.data.cpu().numpy(), global_step=global_episode_counter.value))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='model/nsc_fc4_bias',
-                            value1=model.nsc_fc4.bias.data.numpy(), global_step=global_episode_counter.value))
+                            value1=model.nsc_fc4.bias.data.cpu().numpy(), global_step=global_episode_counter.value))
