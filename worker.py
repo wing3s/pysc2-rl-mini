@@ -15,12 +15,15 @@ def ensure_shared_grads(model, shared_model, gpu_id):
     # NOTE: ref: https://discuss.pytorch.org/t/problem-on-variable-grad-data/957
     for shared_param, local_param in zip(shared_model.parameters(),
                                          model.parameters()):
-        if shared_param.grad is not None:
-            return
         if gpu_id >= 0:
+            # GPU
             shared_param._grad = local_param.grad.clone().cpu()  # pylint: disable=W0212
         else:
-            shared_param._grad = local_param.grad  # pylint: disable=W0212
+            # CPU
+            if shared_param.grad is not None:
+                return
+            else:
+                shared_param._grad = local_param.grad  # pylint: disable=W0212
 
 
 def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, optimizer):
@@ -30,7 +33,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
     summary_iters = args.summary_iters
     if gpu_id >= 0:
         torch.cuda.manual_seed(args.seed + rank)
-        summary_iters *= 10  # send stats less frequent with GPU
+        summary_iters *= 5  # send stats less frequent with GPU
 
     env = create_sc2_minigame_env(args.map_name)
     game_intf = GameInterfaceHandler()
