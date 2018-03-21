@@ -143,7 +143,6 @@ class FullyConv(torch.nn.Module):
         x_spatial = self.sa_conv3(x_state)
         x_spatial = x_spatial.view(x_spatial.shape[0], -1)
         spatial_policy_vb = F.softmax(x_spatial, dim=1)
-        spatial_policy_log_vb = F.log_softmax(x_spatial, dim=1)
 
         x_non_spatial = x_state.view(x_state.shape[0], -1)
         x_non_spatial = F.relu(self.ns_fc3(x_non_spatial))
@@ -154,14 +153,10 @@ class FullyConv(torch.nn.Module):
         non_spatial_policy_vb = F.softmax(x_non_spatial_policy, dim=1)
         non_spatial_policy_vb = self._mask_unavailable_actions(
             non_spatial_policy_vb, valid_action_vb)
-        non_spatial_policy_log_vb = F.log_softmax(x_non_spatial_policy, dim=1)
-        non_spatial_policy_log_vb = self._mask_unavailable_actions_log(
-            non_spatial_policy_log_vb, valid_action_vb
-        )
 
         value_vb = self.nsc_fc4(x_non_spatial)
 
-        return value_vb, spatial_policy_vb, spatial_policy_log_vb, non_spatial_policy_vb, non_spatial_policy_log_vb, None
+        return value_vb, spatial_policy_vb, non_spatial_policy_vb, None
 
     def _mask_unavailable_actions(self, policy_vb, valid_action_vb):
         """
@@ -171,21 +166,8 @@ class FullyConv(torch.nn.Module):
             Returns:
                 masked_policy_vb, (1, num_actions)
         """
-        assert policy_vb.data.sum() > 0
+        assert math.isclose(policy_vb.data.sum(), 1.0, rel_tol=1e-6)
         assert valid_action_vb.data.sum() > 0
         masked_policy_vb = policy_vb * valid_action_vb
         masked_policy_vb /= masked_policy_vb.sum(1)
-        return masked_policy_vb
-
-    def _mask_unavailable_actions_log(self, policy_vb, valid_action_vb):
-        """
-            Args:
-                policy_vb, (1, num_actions)
-                valid_action_vb, (num_actions)
-            Returns:
-                masked_policy_vb, (1, num_actions)
-        """
-        masked_policy_vb = policy_vb * valid_action_vb
-        masked_policy_vb -= torch.log(
-            (masked_policy_vb.exp() * valid_action_vb).sum(1)) * valid_action_vb
         return masked_policy_vb

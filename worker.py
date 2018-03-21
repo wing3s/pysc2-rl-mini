@@ -89,15 +89,19 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                 valid_action_vb = Variable(
                     cuda(torch.from_numpy(game_intf.get_available_actions(state.observation)), gpu_id))
                 # TODO: if args.lstm, do model training with lstm
-                value_vb, spatial_policy_vb, spatial_policy_log_vb, non_spatial_policy_vb, non_spatial_policy_log_vb, lstm_hidden_vb = model(
+                value_vb, spatial_policy_vb, non_spatial_policy_vb, lstm_hidden_vb = model(
                     minimap_vb, screen_vb, info_vb, valid_action_vb, None)
                 # Entropy of a probability distribution is the expected value of - log P(X),
                 # computed as sum(policy * -log(policy)) which is positive.
                 # Entropy is smaller when the probability distribution is more centered on one action
                 # so larger entropy implies more exploration.
                 # Thus we penalise small entropy which is adding -entropy to our loss.
-                spatial_entropy = -(spatial_policy_log_vb * spatial_policy_vb).sum(1)
-                non_spatial_entropy = -(non_spatial_policy_log_vb * non_spatial_policy_vb).sum(1)
+                spatial_entropy = -(
+                    torch.log(torch.clamp(spatial_policy_vb, min=1e-12)) *
+                    spatial_policy_vb).sum(1)  # avoid log(0)
+                non_spatial_entropy = -(
+                    torch.log(torch.clamp(non_spatial_policy_vb, min=1e-12)) *
+                    non_spatial_policy_vb).sum(1)  # avoid log(0)
                 entropy = spatial_entropy + non_spatial_entropy
                 entropies.append(entropy)
 
@@ -108,8 +112,8 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                     spatial_action_ts.cpu().numpy())
                 # For a given state and action, compute the log of the policy at
                 # that action for that state.
-                spatial_policy_log_for_action_vb = spatial_policy_log_vb.gather(1, Variable(spatial_action_ts))
-                non_spatial_policy_log_for_action_vb = non_spatial_policy_log_vb.gather(1, Variable(non_spatial_action_ts))
+                spatial_policy_log_for_action_vb = torch.log(spatial_policy_vb.gather(1, Variable(spatial_action_ts)))
+                non_spatial_policy_log_for_action_vb = torch.log(non_spatial_policy_vb.gather(1, Variable(non_spatial_action_ts)))
 
                 state = env.step([sc2_action])[0]  # single player
                 reward = np.asscalar(state.reward)
@@ -143,7 +147,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                     cuda(torch.from_numpy(game_intf.get_info(state.observation)), gpu_id))
                 valid_action_vb = Variable(
                     cuda(torch.from_numpy(game_intf.get_available_actions(state.observation)), gpu_id))
-                value_vb, _, _, _, _, _ = model(minimap_vb, screen_vb, info_vb, valid_action_vb, None)
+                value_vb, _, _, _ = model(minimap_vb, screen_vb, info_vb, valid_action_vb, None)
                 R_ts = value_vb.data
 
             R_vb = Variable(cuda(R_ts, gpu_id))

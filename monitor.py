@@ -45,7 +45,7 @@ def monitor_fn(rank, args, shared_model, global_episode_counter, summary_queue):
             info_vb = Variable(torch.from_numpy(game_intf.get_info(state.observation)))
             valid_action_vb = Variable(torch.from_numpy(game_intf.get_available_actions(state.observation)), requires_grad=False)
             # TODO: if args.lstm, do model training with lstm
-            value_vb, spatial_policy_vb, spatial_policy_log_vb, non_spatial_policy_vb, non_spatial_policy_log_vb, lstm_hidden_vb = model(
+            value_vb, spatial_policy_vb, non_spatial_policy_vb, lstm_hidden_vb = model(
                 minimap_vb, screen_vb, info_vb, valid_action_vb, None)
             spatial_action_ts = spatial_policy_vb.max(dim=1)[1].unsqueeze(0).data
             non_spatial_action_ts = non_spatial_policy_vb.max(dim=1)[1].unsqueeze(0).data
