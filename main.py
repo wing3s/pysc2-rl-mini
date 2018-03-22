@@ -87,16 +87,16 @@ def main(args):
 
     # load or reset model file and logs
     counter_f_path = '{0}/{1}/{2}/counter.log'.format(args.log_dir, args.map_name, args.job_name)
-    global_episode_counter_val = 0
+    init_episode_counter_val = 0
     if not args.reset:
         try:
             model_f_path = '{0}/{1}/{2}.dat'.format(args.model_dir, args.map_name, args.job_name)
             shared_model.load_state_dict(torch.load(model_f_path))
             with open(counter_f_path, 'r') as counter_f:
-                global_episode_counter_val = int(counter_f.readline())
-                summary_queue.put(
-                    Summary(action='add_text', tag='log',
-                            value1='Reuse trained model {0}, from global_counter: {1}'.format(model_f_path, global_episode_counter_val)))
+                init_episode_counter_val = int(counter_f.readline())
+            summary_queue.put(
+                Summary(action='add_text', tag='log',
+                        value1='Reuse trained model {0}, from global_counter: {1}'.format(model_f_path, init_episode_counter_val)))
         except FileNotFoundError as e:
             summary_queue.put(
                 Summary(action='add_text', tag='log', value1='No model found -- Start from scratch, {0}'.format(str(e))))
@@ -104,9 +104,9 @@ def main(args):
         summary_queue.put(
             Summary(action='add_text', tag='log', value1='Reset -- Start from scratch'))
     with open(counter_f_path, 'w+') as counter_f:
-        counter_f.write(str(global_episode_counter_val))
+        counter_f.write(str(init_episode_counter_val))
     summary_queue.put(
-        Summary(action='add_text', tag='log', value1='Main process pid: {0}'.format(os.getpid())))
+        Summary(action='add_text', tag='log', value1='Main process PID: {0}'.format(os.getpid())))
     shared_model.share_memory()
 
     optimizer = SharedAdam(shared_model.parameters(), lr=args.lr)
@@ -115,7 +115,7 @@ def main(args):
     # multiprocesses, Hogwild! style update
     processes = []
 
-    global_episode_counter = mp.Value('i', global_episode_counter_val)
+    global_episode_counter = mp.Value('i', init_episode_counter_val)
 
     # each worker_thread creates its own environment and trains agents
     for rank in range(args.num_processes):
@@ -137,7 +137,7 @@ def main(args):
 
     # summary writer thread
     summary_thread = mp.Process(
-        target=writer_fn, args=(args, summary_queue))
+        target=writer_fn, args=(args, summary_queue, init_episode_counter_val))
     summary_thread.daemon = True
     summary_thread.start()
     processes.append(summary_thread)
