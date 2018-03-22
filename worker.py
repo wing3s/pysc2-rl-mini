@@ -211,7 +211,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
             if summary_queue is not None and local_update_count % (summary_iters * 10) == 0:
                 global_episode_counter_val = global_episode_counter.value
                 summary_queue.put(
-                    Summary(action='add_histogram', tag='policy/spatial_vb)',
+                    Summary(action='add_histogram', tag='policy/spatial_vb',
                             value1=spatial_policy_vb.data.cpu().numpy(), global_step=global_episode_counter_val))
                 summary_queue.put(
                     Summary(action='add_histogram', tag='policy/non_spatial_vb',
