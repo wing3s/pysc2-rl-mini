@@ -147,8 +147,6 @@ class FullyConv(torch.nn.Module):
         x_non_spatial = x_state.view(x_state.shape[0], -1)
         x_non_spatial = F.relu(self.ns_fc3(x_non_spatial))
 
-        # NOTE: use torch.log(torch.softmax(Tensor)) will cause result unstable,
-        #       use log_softmax instead
         x_non_spatial_policy = self.nsa_fc4(x_non_spatial)
         non_spatial_policy_vb = F.softmax(x_non_spatial_policy, dim=1)
         non_spatial_policy_vb = self._mask_unavailable_actions(
@@ -166,8 +164,6 @@ class FullyConv(torch.nn.Module):
             Returns:
                 masked_policy_vb, (1, num_actions)
         """
-        assert math.isclose(policy_vb.data.sum(), 1.0, rel_tol=1e-6)
-        assert valid_action_vb.data.sum() > 0
         masked_policy_vb = policy_vb * valid_action_vb
         masked_policy_vb /= masked_policy_vb.sum(1)
         return masked_policy_vb
