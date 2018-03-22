@@ -18,7 +18,6 @@ def create_sc2_minigame_env(map_name, visualize=False):
         screen_size_px=(sc2_cfg['screen']['y_res'], sc2_cfg['screen']['x_res']),
         minimap_size_px=(sc2_cfg['minimap']['y_res'], sc2_cfg['minimap']['x_res']),
         visualize=visualize)
-    env = available_actions_printer.AvailableActionsPrinter(env)
     return env
 
 
