@@ -65,12 +65,13 @@ def monitor_fn(rank, args, shared_model, global_episode_counter, summary_queue):
             if episode_done:
                 # log stats
                 if summary_queue is not None:
+                    global_episode_counter_val = global_episode_counter.value
                     summary_queue.put(
                         Summary(action='add_scalar', tag='monitor/episode_reward',
-                                value1=reward_sum, global_step=global_episode_counter.value))
+                                value1=reward_sum, global_step=global_episode_counter_val))
                     summary_queue.put(
                         Summary(action='add_scalar', tag='monitor/episode_length',
-                                value1=episode_length, global_step=global_episode_counter.value))
+                                value1=episode_length, global_step=global_episode_counter_val))
                 # save model
                 if reward_sum >= max_score:
                     max_score = reward_sum
