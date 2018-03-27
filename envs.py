@@ -10,13 +10,16 @@ with open("sc2_config.yml", 'r') as ymlfile:
     sc2_cfg = yaml.load(ymlfile)
 
 
-def create_sc2_minigame_env(map_name, visualize=False):
-    """Create sc2 game env with available actions printer"""
+def create_sc2_minigame_env(map_name, visualize=False, mode='dev'):
+    """Create sc2 game env with available actions printer
+        Set screen, minimap same resolution and x, y same pixels for simplicity.
+    """
+    assert mode in ['dev', 'test']
     env = sc2_env.SC2Env(
         map_name=map_name,
-        step_mul=sc2_cfg['step_mul'],
-        screen_size_px=(sc2_cfg['screen']['y_res'], sc2_cfg['screen']['x_res']),
-        minimap_size_px=(sc2_cfg['minimap']['y_res'], sc2_cfg['minimap']['x_res']),
+        step_mul=sc2_cfg[mode]['step_mul'],
+        screen_size_px=(sc2_cfg[mode]['resl'],) * 2,
+        minimap_size_px=(sc2_cfg[mode]['resl'],) * 2,
         visualize=visualize)
     return env
 
@@ -36,7 +39,8 @@ class GameInterfaceHandler(object):
         NOTE: This class can potentially be a decorator to wrap sc2_env
     """
 
-    def __init__(self):
+    def __init__(self, mode='dev'):
+        assert mode in ['dev', 'test']
         self.dtype = np.float32
 
         self.minimap_player_id = features.MINIMAP_FEATURES.player_id.index
@@ -44,10 +48,8 @@ class GameInterfaceHandler(object):
         self.screen_unit_type = features.SCREEN_FEATURES.unit_type.index
 
         self.num_action = len(actions.FUNCTIONS)
-        self.screen_resolution = (sc2_cfg['screen']['y_res'],
-                                  sc2_cfg['screen']['x_res'])
-        self.minimap_resolution = (sc2_cfg['minimap']['y_res'],
-                                   sc2_cfg['minimap']['x_res'])
+        self.screen_resolution = (sc2_cfg[mode]['resl'],) * 2
+        self.minimap_resolution = (sc2_cfg[mode]['resl'],) * 2
 
     @property
     def screen_channels(self):
