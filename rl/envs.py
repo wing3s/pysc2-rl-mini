@@ -79,9 +79,9 @@ class GameInterfaceHandler(object):
         assert screen.shape[0] == len(features.SCREEN_FEATURES)
         for i, screen_feature in enumerate(features.SCREEN_FEATURES):
             if i == self.screen_player_id or i == self.screen_unit_type:
-                layers.append(screen[i:i+1] / screen_feature.scale)
+                layers.append(screen[i:i + 1] / screen_feature.scale)
             elif screen_feature.type == features.FeatureType.SCALAR:
-                layers.append(screen[i:i+1] / screen_feature.scale)
+                layers.append(screen[i:i + 1] / screen_feature.scale)
             else:
                 layer = np.zeros(
                     (screen_feature.scale, screen.shape[1], screen.shape[2]),
@@ -127,9 +127,9 @@ class GameInterfaceHandler(object):
         assert minimap.shape[0] == len(features.MINIMAP_FEATURES)
         for i, minimap_feature in enumerate(features.MINIMAP_FEATURES):
             if i == self.minimap_player_id:
-                layers.append(minimap[i:i+1] / minimap_feature.scale)
+                layers.append(minimap[i:i + 1] / minimap_feature.scale)
             elif minimap_feature.type == features.FeatureType.SCALAR:
-                layers.append(minimap[i:i+1] / minimap_feature.scale)
+                layers.append(minimap[i:i + 1] / minimap_feature.scale)
             else:
                 layer = np.zeros(
                     (minimap_feature.scale, minimap.shape[1], minimap.shape[2]),
