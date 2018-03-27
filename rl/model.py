@@ -102,7 +102,7 @@ class FullyConv(torch.nn.Module):
 
         # non spatial feature
         self.ns_fc3 = nn.Linear(
-            screen_resolution[0] * screen_resolution[1] * state_channels, 256)
+            screen_resolution * screen_resolution * state_channels, 256)
         # non spatial actor
         self.nsa_fc4 = nn.Linear(256, num_action)
         # non spatial critic

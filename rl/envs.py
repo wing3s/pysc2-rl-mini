@@ -51,8 +51,8 @@ class GameInterfaceHandler(object):
         self.screen_unit_type = features.SCREEN_FEATURES.unit_type.index
 
         self.num_action = len(actions.FUNCTIONS)
-        self.screen_resolution = (sc2_cfg[mode]['resl'],) * 2
-        self.minimap_resolution = (sc2_cfg[mode]['resl'],) * 2
+        self.screen_resolution = sc2_cfg[mode]['resl']
+        self.minimap_resolution = sc2_cfg[mode]['resl']
 
     @property
     def screen_channels(self):
