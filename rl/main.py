@@ -65,8 +65,16 @@ parser.add_argument('--summary-iters', type=int, default=8, metavar='SI',
 
 
 def init_dirs(args):
-    for dir_path in [args.log_dir, args.model_dir, args.summary_dir]:
-        sub_dir_path = "{0}/{1}/{2}".format(dir_path, args.map_name, args.job_name)
+    """Set dir path from argparse is relative to project root folder"""
+    abs_base_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "..")
+
+    for dir_arg in ['log_dir', 'model_dir', 'summary_dir']:
+        dir_path = getattr(args, dir_arg)
+        if abs_base_path not in dir_path:
+            dir_path = os.path.join(abs_base_path, dir_path)
+            setattr(args, dir_arg, dir_path)
+
+        sub_dir_path = os.path.join(dir_path, args.map_name, args.job_name)
         if not os.path.exists(sub_dir_path):
             os.makedirs(sub_dir_path)
 
