@@ -1,6 +1,7 @@
 import yaml
 import numpy as np
 from os import path
+from absl import flags
 
 from pysc2.env import sc2_env
 from pysc2.lib import features
@@ -17,6 +18,11 @@ def create_sc2_minigame_env(map_name, visualize=False, mode='dev'):
         Set screen, minimap same resolution and x, y same pixels for simplicity.
     """
     assert mode in ['dev', 'test']
+
+    # workaround for pysc2 flags
+    FLAGS = flags.FLAGS
+    FLAGS([__file__])
+
     env = sc2_env.SC2Env(
         map_name=map_name,
         step_mul=sc2_cfg[mode]['step_mul'],

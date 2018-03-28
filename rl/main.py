@@ -3,7 +3,6 @@ import time
 import argparse
 import torch
 import torch.multiprocessing as mp
-from absl import flags
 
 from envs import GameInterfaceHandler
 from model import FullyConv
@@ -12,10 +11,6 @@ from worker import worker_fn
 from monitor import monitor_fn
 from summary import writer_fn, Summary
 from utils.sysprocess import kill_child_processes
-
-# workaround for pysc2 flags
-FLAGS = flags.FLAGS
-FLAGS([__file__])
 
 parser = argparse.ArgumentParser(description='A3C')
 
