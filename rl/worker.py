@@ -113,6 +113,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                 # For a given state and action, compute the log of the policy at
                 # that action for that state.
                 spatial_policy_log_for_action_vb = torch.log(spatial_policy_vb.gather(1, Variable(spatial_action_ts)))
+                spatial_policy_log_for_action_vb *= float(game_intf.is_non_spatial_action(sc2_action.function))  # set to 0 if non-spatial action is chosen
                 non_spatial_policy_log_for_action_vb = torch.log(non_spatial_policy_vb.gather(1, Variable(non_spatial_action_ts)))
 
                 state = env.step([sc2_action])[0]  # single player

@@ -61,7 +61,7 @@ class GameInterfaceHandler(object):
         self.screen_resolution = sc2_cfg[mode]['resl']
         self.minimap_resolution = sc2_cfg[mode]['resl']
 
-        self.non_spatial_actions = self._get_nonspatial_actions()
+        self.non_spatial_actions = self._get_non_spatial_actions()
 
     @property
     def screen_channels(self):
@@ -201,7 +201,7 @@ class GameInterfaceHandler(object):
                 act_args.append([0])
         return actions.FunctionCall(act_id, act_args)
 
-    def _get_nonspatial_actions(self):
+    def _get_non_spatial_actions(self):
         non_spatial_actions = [True] * self.num_action
         for func_id, func in enumerate(actions.FUNCTIONS):
             for arg in func.args:
@@ -210,5 +210,5 @@ class GameInterfaceHandler(object):
                     break
         return non_spatial_actions
 
-    def is_nonspatial_action(self, action_id):
+    def is_non_spatial_action(self, action_id):
         return self.non_spatial_actions[action_id]
