@@ -64,9 +64,7 @@ class GameInterfaceHandler(object):
         """Return number of channels for preprocessed screen image"""
         channels = 0
         for i, screen_feature in enumerate(features.SCREEN_FEATURES):
-            if i == self.screen_player_id or i == self.screen_unit_type:
-                channels += 1
-            elif screen_feature.type == features.FeatureType.SCALAR:
+            if screen_feature.type == features.FeatureType.SCALAR:
                 channels += 1
             else:
                 channels += screen_feature.scale
@@ -83,10 +81,8 @@ class GameInterfaceHandler(object):
         layers = []
         assert screen.shape[0] == len(features.SCREEN_FEATURES)
         for i, screen_feature in enumerate(features.SCREEN_FEATURES):
-            if i == self.screen_player_id or i == self.screen_unit_type:
-                layers.append(screen[i:i + 1] / screen_feature.scale)
-            elif screen_feature.type == features.FeatureType.SCALAR:
-                layers.append(screen[i:i + 1] / screen_feature.scale)
+            if screen_feature.type == features.FeatureType.SCALAR:
+                layers.append(np.log(screen[i:i + 1] + 1.))
             else:
                 layer = np.zeros(
                     (screen_feature.scale, screen.shape[1], screen.shape[2]),
@@ -112,9 +108,7 @@ class GameInterfaceHandler(object):
         """Return number of channels for preprocessed minimap image"""
         channels = 0
         for i, minimap_feature in enumerate(features.MINIMAP_FEATURES):
-            if i == self.minimap_player_id:
-                channels += 1
-            elif minimap_feature.type == features.FeatureType.SCALAR:
+            if minimap_feature.type == features.FeatureType.SCALAR:
                 channels += 1
             else:
                 channels += minimap_feature.scale
@@ -131,10 +125,8 @@ class GameInterfaceHandler(object):
         layers = []
         assert minimap.shape[0] == len(features.MINIMAP_FEATURES)
         for i, minimap_feature in enumerate(features.MINIMAP_FEATURES):
-            if i == self.minimap_player_id:
-                layers.append(minimap[i:i + 1] / minimap_feature.scale)
-            elif minimap_feature.type == features.FeatureType.SCALAR:
-                layers.append(minimap[i:i + 1] / minimap_feature.scale)
+            if minimap_feature.type == features.FeatureType.SCALAR:
+                layers.append(np.log(minimap[i:i + 1] + 1.))
             else:
                 layer = np.zeros(
                     (minimap_feature.scale, minimap.shape[1], minimap.shape[2]),
@@ -193,8 +185,8 @@ class GameInterfaceHandler(object):
         act_id = non_spatial_action[0][0]
         target = spatial_action[0][0]
         target_point = [
-            int(target % self.screen_resolution[0]),
-            int(target // self.screen_resolution[0])
+            int(target % self.screen_resolution),
+            int(target // self.screen_resolution)
         ]  # (x, y)
 
         act_args = []
