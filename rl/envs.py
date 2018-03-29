@@ -32,6 +32,8 @@ def create_sc2_minigame_env(map_name, visualize=False, mode='dev'):
     return env
 
 
+# TODO: move preprocess to neuro net embed layer
+# TODO: move post process into sc2_env extension
 class GameInterfaceHandler(object):
     """Provide game interface info.
         Transform observed game image and available actions into CNN input tensors.
@@ -209,4 +211,4 @@ class GameInterfaceHandler(object):
         return non_spatial_actions
 
     def is_nonspatial_action(self, action_id):
-        return self.non_spatial_actions(action_id)
+        return self.non_spatial_actions[action_id]
