@@ -153,7 +153,7 @@ def main(args):
         for process in processes:
             process.join()
             killed_process_count += 1 if process.exitcode == 1 else 0
-            if killed_process_count >= len(processes) - 2:
+            if killed_process_count >= args.num_processes:
                 # exit if only monitor and writer alive
                 raise SystemExit
     except (KeyboardInterrupt, SystemExit):
