@@ -31,6 +31,8 @@ parser.add_argument('--seed', type=int, default=123,
                     help='random seed (default: 123)')
 
 # experiment parameters
+parser.add_argument('--mode', default='lite', metavar='M',
+                    help='run experiment in full, lite or test mode (default: lite)')
 parser.add_argument('--map-name', default='FindAndDefeatZerglings', metavar='MAP',
                     help='environment(mini map) to train on (default: FindAndDefeatZerglings)')
 parser.add_argument('--job-name', default='default', metavar='JN',
@@ -79,7 +81,7 @@ def main(args):
     os.environ['OMP_NUM_THREADS'] = '1'  # still required for CPU performance
     mp.set_start_method('spawn')  # required to avoid Conv2d froze issue
     summary_queue = mp.Queue()
-    game_intf = GameInterfaceHandler()
+    game_intf = GameInterfaceHandler(args.mode)
     # critic
     shared_model = FullyConv(
         game_intf.minimap_channels,

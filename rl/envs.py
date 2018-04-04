@@ -13,11 +13,11 @@ with open(sc2_f_path, 'r') as ymlfile:
     sc2_cfg = yaml.load(ymlfile)
 
 
-def create_sc2_minigame_env(map_name, visualize=False, mode='dev'):
+def create_sc2_minigame_env(map_name, mode, visualize=False):
     """Create sc2 game env with available actions printer
         Set screen, minimap same resolution and x, y same pixels for simplicity.
     """
-    assert mode in ['dev', 'test']
+    assert mode in ['full', 'lite', 'test']
 
     # workaround for pysc2 flags
     FLAGS = flags.FLAGS
@@ -49,18 +49,20 @@ class GameInterfaceHandler(object):
         NOTE: This class can potentially be a decorator to wrap sc2_env
     """
 
-    def __init__(self, mode='dev'):
-        assert mode in ['dev', 'test']
+    def __init__(self, mode):
+        assert mode in ['full', 'lite', 'test']
         self.dtype = np.float32
 
         self.minimap_player_id = features.MINIMAP_FEATURES.player_id.index
         self.screen_player_id = features.SCREEN_FEATURES.player_id.index
         self.screen_unit_type = features.SCREEN_FEATURES.unit_type.index
 
-        self.num_action = len(actions.FUNCTIONS)
         self.screen_resolution = sc2_cfg[mode]['resl']
         self.minimap_resolution = sc2_cfg[mode]['resl']
 
+        (self.sub_to_full_acts, self.full_to_sub_acts) = self._get_action_mappings(
+            sc2_cfg[mode]['action_list'])
+        self.num_action = len(self.sub_to_full_acts)
         self.non_spatial_actions = self._get_non_spatial_actions()
 
     @property
@@ -155,8 +157,9 @@ class GameInterfaceHandler(object):
         """Returns ndarray of available_actions from observed['available_actions']
             shape (num_actions)
         """
+        available_actions = np.intersect1d(available_actions, self.sub_to_full_acts)
         a_actions = np.zeros((self.num_action), dtype=self.dtype)
-        a_actions[available_actions] = 1.
+        a_actions[self.full_to_sub_acts[available_actions]] = 1.
         return a_actions
 
     def get_available_actions(self, observation):
@@ -186,7 +189,7 @@ class GameInterfaceHandler(object):
             Returns:
                 FunctionCall as action for pysc2_env
         """
-        act_id = non_spatial_action[0][0]
+        act_id = self.sub_to_full_acts[non_spatial_action[0][0]]
         target = spatial_action[0][0]
         target_point = [
             int(target % self.screen_resolution),
@@ -206,9 +209,27 @@ class GameInterfaceHandler(object):
         for func_id, func in enumerate(actions.FUNCTIONS):
             for arg in func.args:
                 if arg.name in ('screen', 'minimap', 'screen2'):
-                    non_spatial_actions[func_id] = False
+                    non_spatial_actions[self.full_to_sub_acts[func_id]] = False
                     break
         return non_spatial_actions
 
     def is_non_spatial_action(self, action_id):
-        return self.non_spatial_actions[action_id]
+        return self.non_spatial_actions[self.full_to_sub_acts[action_id]]
+
+    def _get_action_mappings(self, action_list):
+        """Fill actioin list if it's empty
+
+            Args:
+                action_list: list
+            Returns:
+                sub_to_full_acts: ndarray
+                full_to_sub_acts: ndarray
+        """
+        if len(action_list) == 0:
+            action_list = [i for i in range(len(actions.FUNCTIONS))]
+
+        sub_to_full_acts = action_list
+        full_to_sub_acts = [-1] * len(actions.FUNCTIONS)
+        for idx, val in enumerate(sub_to_full_acts):
+            full_to_sub_acts[val] = idx
+        return (np.asarray(sub_to_full_acts, dtype=np.int32), np.asarray(full_to_sub_acts, dtype=np.int32))

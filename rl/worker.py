@@ -35,8 +35,8 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
         torch.cuda.manual_seed(args.seed + rank)
         summary_iters *= 5  # send stats less frequent with GPU
 
-    env = create_sc2_minigame_env(args.map_name)
-    game_intf = GameInterfaceHandler()
+    env = create_sc2_minigame_env(args.map_name, args.mode)
+    game_intf = GameInterfaceHandler(args.mode)
 
     with env:
         model = FullyConv(

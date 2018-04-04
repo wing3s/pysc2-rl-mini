@@ -12,8 +12,8 @@ from summary import Summary
 def monitor_fn(rank, args, shared_model, global_episode_counter, summary_queue):
     # Keep monitor cpu only
     torch.manual_seed(args.seed + rank)
-    env = create_sc2_minigame_env(args.map_name)
-    game_intf = GameInterfaceHandler()
+    env = create_sc2_minigame_env(args.map_name, args.mode)
+    game_intf = GameInterfaceHandler(args.mode)
 
     with env:
         model = FullyConv(
