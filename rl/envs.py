@@ -12,7 +12,7 @@ sc2_f_path = path.abspath(path.join(path.dirname(__file__), "..", "configs", "sc
 with open(sc2_f_path, 'r') as ymlfile:
     sc2_cfg = yaml.load(ymlfile)
 
-
+# TODO: update README.md for adding random seed for game env
 def create_sc2_minigame_env(map_name, mode, visualize=False):
     """Create sc2 game env with available actions printer
         Set screen, minimap same resolution and x, y same pixels for simplicity.
@@ -23,12 +23,14 @@ def create_sc2_minigame_env(map_name, mode, visualize=False):
     FLAGS = flags.FLAGS
     FLAGS([__file__])
 
+    env_seed = 3 if mode == 'test' else None
     env = sc2_env.SC2Env(
         map_name=map_name,
         step_mul=sc2_cfg[mode]['step_mul'],
         screen_size_px=(sc2_cfg[mode]['resl'],) * 2,
         minimap_size_px=(sc2_cfg[mode]['resl'],) * 2,
-        visualize=visualize)
+        visualize=visualize,
+        random_seed=env_seed)
     return env
 
 
