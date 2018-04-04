@@ -73,7 +73,9 @@ class GameInterfaceHandler(object):
         """Return number of channels for preprocessed screen image"""
         channels = 0
         for i, screen_feature in enumerate(features.SCREEN_FEATURES):
-            if screen_feature.type == features.FeatureType.SCALAR:
+            if i == self.screen_player_id or i == self.screen_unit_type:
+                channels += 1
+            elif screen_feature.type == features.FeatureType.SCALAR:
                 channels += 1
             else:
                 channels += screen_feature.scale
@@ -90,7 +92,9 @@ class GameInterfaceHandler(object):
         layers = []
         assert screen.shape[0] == len(features.SCREEN_FEATURES)
         for i, screen_feature in enumerate(features.SCREEN_FEATURES):
-            if screen_feature.type == features.FeatureType.SCALAR:
+            if i == self.screen_player_id or i == self.screen_unit_type:
+                layers.append(np.log(screen[i:i + 1] + 1.))
+            elif screen_feature.type == features.FeatureType.SCALAR:
                 layers.append(np.log(screen[i:i + 1] + 1.))
             else:
                 layer = np.zeros(
@@ -117,7 +121,9 @@ class GameInterfaceHandler(object):
         """Return number of channels for preprocessed minimap image"""
         channels = 0
         for i, minimap_feature in enumerate(features.MINIMAP_FEATURES):
-            if minimap_feature.type == features.FeatureType.SCALAR:
+            if i == self.minimap_player_id:
+                channels += 1
+            elif minimap_feature.type == features.FeatureType.SCALAR:
                 channels += 1
             else:
                 channels += minimap_feature.scale
@@ -134,7 +140,9 @@ class GameInterfaceHandler(object):
         layers = []
         assert minimap.shape[0] == len(features.MINIMAP_FEATURES)
         for i, minimap_feature in enumerate(features.MINIMAP_FEATURES):
-            if minimap_feature.type == features.FeatureType.SCALAR:
+            if i == self.minimap_player_id:
+                layers.append(np.log(minimap[i:i + 1] + 1.))
+            elif minimap_feature.type == features.FeatureType.SCALAR:
                 layers.append(np.log(minimap[i:i + 1] + 1.))
             else:
                 layer = np.zeros(
