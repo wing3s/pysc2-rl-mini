@@ -12,6 +12,7 @@ sc2_f_path = path.abspath(path.join(path.dirname(__file__), "..", "configs", "sc
 with open(sc2_f_path, 'r') as ymlfile:
     sc2_cfg = yaml.load(ymlfile)
 
+
 # TODO: update README.md for adding random seed for game env
 def create_sc2_minigame_env(map_name, mode, visualize=False):
     """Create sc2 game env with available actions printer
