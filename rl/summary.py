@@ -19,9 +19,9 @@ def writer_fn(args, msg_queue, init_counter_val):
         summary_job_dir_path = os.path.join(summary_dir_path, dt_str)
 
     summary_writer = SummaryWriter(summary_job_dir_path)
-    with summary_writer:
-        while True:
-            summary = msg_queue.get()
+    while True:
+        summary = msg_queue.get()
+        try:
             if summary.action in ['add_scalar', 'add_text']:
                 action = getattr(summary_writer, summary.action)
                 action(summary.tag, summary.value1, summary.global_step)
@@ -29,6 +29,11 @@ def writer_fn(args, msg_queue, init_counter_val):
                 summary_writer.add_histogram(summary.tag, summary.value1, summary.global_step, bins='auto')
             elif summary.action == 'add_graph':
                 summary_writer.add_graph(summary.value1, summary.value2)
+        except Exception as e:
+            print("Recreate SummaryWriter...", e)
+            summary_writer = SummaryWriter(summary_job_dir_path)
+    summary_writer.close()
+
 
 Summary = collections.namedtuple(
     'Summary',
