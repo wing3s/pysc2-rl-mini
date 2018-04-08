@@ -68,11 +68,16 @@ class GameInterfaceHandler(object):
         self.num_action = len(self.sub_to_full_acts)
         self.non_spatial_actions = self._get_non_spatial_actions()
 
+        self.screen_imgs = sc2_cfg[mode]['screen_imgs']
+        self.minimap_imgs = sc2_cfg[mode]['minimap_imgs']
+
     @property
     def screen_channels(self):
         """Return number of channels for preprocessed screen image"""
         channels = 0
         for i, screen_feature in enumerate(features.SCREEN_FEATURES):
+            if len(self.screen_imgs) > 0 and i not in self.screen_imgs:
+                continue
             if i == self.screen_player_id or i == self.screen_unit_type:
                 channels += 1
             elif screen_feature.type == features.FeatureType.SCALAR:
@@ -92,6 +97,8 @@ class GameInterfaceHandler(object):
         layers = []
         assert screen.shape[0] == len(features.SCREEN_FEATURES)
         for i, screen_feature in enumerate(features.SCREEN_FEATURES):
+            if len(self.screen_imgs) > 0 and i not in self.screen_imgs:
+                continue
             if i == self.screen_player_id or i == self.screen_unit_type:
                 layers.append(np.log(screen[i:i + 1] + 1.))
             elif screen_feature.type == features.FeatureType.SCALAR:
@@ -121,6 +128,8 @@ class GameInterfaceHandler(object):
         """Return number of channels for preprocessed minimap image"""
         channels = 0
         for i, minimap_feature in enumerate(features.MINIMAP_FEATURES):
+            if len(self.minimap_imgs) > 0 and i not in self.minimap_imgs:
+                continue
             if i == self.minimap_player_id:
                 channels += 1
             elif minimap_feature.type == features.FeatureType.SCALAR:
@@ -140,6 +149,8 @@ class GameInterfaceHandler(object):
         layers = []
         assert minimap.shape[0] == len(features.MINIMAP_FEATURES)
         for i, minimap_feature in enumerate(features.MINIMAP_FEATURES):
+            if len(self.minimap_imgs) > 0 and i not in self.minimap_imgs:
+                continue
             if i == self.minimap_player_id:
                 layers.append(np.log(minimap[i:i + 1] + 1.))
             elif minimap_feature.type == features.FeatureType.SCALAR:

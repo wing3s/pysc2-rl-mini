@@ -2,11 +2,17 @@ full:
     step_mul: 8  # 180 APM
     resl: 32  # at least 64^2 resolution is recommended to be playable for regular map, use 32^32 for mini games here
     action_list: []  # empty list for full pysc2 action list
+    minimap_imgs: []  # empty list for full set of minimap images
+    screen_imgs: []  # empty list for ful set of screen images
 lite:
     step_mul: 8
     resl: 32
     action_list: [1, 2, 3, 4, 7, 12, 13, 274, 331, 332, 333, 334, 451, 452, 453]
+    minimap_imgs: []
+    screen_imgs: []
 test:
     step_mul: 8
     resl: 8
     action_list: [1, 2, 3, 4, 7, 12, 13, 274, 331, 332, 333, 334, 451, 452, 453]
+    minimap_imgs: []
+    screen_imgs: []
