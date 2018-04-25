@@ -22,7 +22,7 @@ def writer_fn(args, msg_queue, init_counter_val):
     while True:
         summary = msg_queue.get()
         try:
-            if summary.action in ['add_scalar', 'add_text']:
+            if summary.action in ['add_scalar', 'add_text', 'add_scalars']:
                 action = getattr(summary_writer, summary.action)
                 action(summary.tag, summary.value1, summary.global_step)
             elif summary.action == 'add_histogram':
