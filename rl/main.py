@@ -71,7 +71,7 @@ def init_dirs(args):
             dir_path = os.path.join(abs_base_path, dir_path)
             setattr(args, dir_arg, dir_path)
 
-        sub_dir_path = os.path.join(dir_path, args.map_name, args.job_name)
+        sub_dir_path = os.path.join(dir_path, args.mode, args.map_name, args.job_name)
         if not os.path.exists(sub_dir_path):
             os.makedirs(sub_dir_path)
 
@@ -91,11 +91,11 @@ def main(args):
         args.lstm)
 
     # load or reset model file and logs
-    counter_f_path = '{0}/{1}/{2}/counter.log'.format(args.log_dir, args.map_name, args.job_name)
+    counter_f_path = '{0}/{1}/{2}/counter.log'.format(args.log_dir, args.mode, args.map_name, args.job_name)
     init_episode_counter_val = 0
     if not args.reset:
         try:
-            model_f_path = '{0}/{1}/{2}.dat'.format(args.model_dir, args.map_name, args.job_name)
+            model_f_path = '{0}/{1}/{2}.dat'.format(args.model_dir, args.mode, args.map_name, args.job_name)
             shared_model.load_state_dict(torch.load(model_f_path))
             with open(counter_f_path, 'r') as counter_f:
                 init_episode_counter_val = int(counter_f.readline())

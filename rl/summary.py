@@ -8,7 +8,7 @@ from utils.sysprocess import del_dir_contents, get_first_subdir
 def writer_fn(args, msg_queue, init_counter_val):
     """subscriber listens to message queue to write to file"""
     dt_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    summary_dir_path = os.path.join(args.summary_dir, args.map_name, args.job_name)
+    summary_dir_path = os.path.join(args.summary_dir, args.mode, args.map_name, args.job_name)
 
     if init_counter_val > 0 and get_first_subdir(summary_dir_path) is not None:
         # carry over existing stats
