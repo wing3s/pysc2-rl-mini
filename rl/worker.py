@@ -203,11 +203,28 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                     Summary(action='add_scalar', tag='train/value_loss',
                             value1=value_loss_vb[0][0], global_step=global_episode_counter_val))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/rewards/sum',
-                            value1=np.array(rewards).sum(), global_step=global_episode_counter_val))
+                    Summary(action='add_scalar', tag='train/total_loss',
+                            value1=loss_vb[0][0], global_step=global_episode_counter_val))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/entropies/mean',
-                            value1=np.array(entropies).mean(), global_step=global_episode_counter_val))
+                    Summary(
+                        action='add_scalars',
+                        tag='train/rewards/sum',
+                        value1={
+                            'avg': np.array(rewards).sum(),
+                            'max': np.array(rewards).max(),
+                            'min': np.array(rewards).min()
+                        },
+                        global_step=global_episode_counter_val))
+                summary_queue.put(
+                    Summary(
+                        action='add_scalars',
+                        tag='train/entropies/mean',
+                        value1={
+                            'avg': np.array(entropies).mean(),
+                            'max': np.array(entropies).max(),
+                            'min': np.array(entropies).min()
+                        },
+                        global_step=global_episode_counter_val))
 
             if summary_queue is not None and local_update_count % (summary_iters * 10) == 0:
                 global_episode_counter_val = global_episode_counter.value
