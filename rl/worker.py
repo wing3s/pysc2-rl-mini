@@ -193,7 +193,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
             # log stats
             if summary_queue is not None and local_update_count % summary_iters == 0:
                 global_episode_counter_val = global_episode_counter.value
-                counter_f_path = '{0}/{1}/{2}/counter.log'.format(args.log_dir, args.mode, args.map_name, args.job_name)
+                counter_f_path = '{0}/{1}/{2}/{3}/counter.log'.format(args.log_dir, args.mode, args.map_name, args.job_name)
                 with open(counter_f_path, 'w') as counter_f:
                     counter_f.write(str(global_episode_counter_val))
                 summary_queue.put(

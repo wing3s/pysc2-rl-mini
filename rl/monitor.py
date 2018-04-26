@@ -76,7 +76,7 @@ def monitor_fn(rank, args, shared_model, global_episode_counter, summary_queue):
                 if reward_sum >= max_score:
                     max_score = reward_sum
                     model_state = model.state_dict()
-                    torch.save(model_state, '{0}/{1}/{2}.dat'.format(args.model_dir, args.mode, args.map_name, args.job_name))
+                    torch.save(model_state, '{0}/{1}/{2}/{3}.dat'.format(args.model_dir, args.mode, args.map_name, args.job_name))
                 # reset stats and env
                 reward_sum = 0
                 episode_length = 0
