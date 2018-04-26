@@ -10,11 +10,11 @@ from torch.autograd import Variable
 
 def init_weights(model):
     if type(model) in [nn.Linear, nn.Conv2d]:
-        init.xavier_uniform(model.weight)
-        init.constant(model.bias, 0)
+        init.xavier_uniform_(model.weight)
+        init.constant_(model.bias, 0)
     elif type(model) in [nn.LSTMCell]:
-        init.constant(model.bias_ih, 0)
-        init.constant(model.bias_hh, 0)
+        init.constant_(model.bias_ih, 0)
+        init.constant_(model.bias_hh, 0)
 
 
 class ActorCritic(torch.nn.Module):
@@ -43,12 +43,12 @@ class ActorCritic(torch.nn.Module):
         self.actor_5 = nn.Linear(256, action_space.n)
 
         # apply Xavier weights initialization
-        torch.nn.init.xavier_uniform(self.conv1.weight)
-        torch.nn.init.xavier_uniform(self.conv2.weight)
-        torch.nn.init.xavier_uniform(self.conv3.weight)
-        torch.nn.init.xavier_uniform(self.conv4.weight)
-        torch.nn.init.xavier_uniform(self.actor_5.weight)
-        torch.nn.init.xavier_uniform(self.critic_5.weight)
+        torch.nn.init.xavier_uniform_(self.conv1.weight)
+        torch.nn.init.xavier_uniform_(self.conv2.weight)
+        torch.nn.init.xavier_uniform_(self.conv3.weight)
+        torch.nn.init.xavier_uniform_(self.conv4.weight)
+        torch.nn.init.xavier_uniform_(self.actor_5.weight)
+        torch.nn.init.xavier_uniform_(self.critic_5.weight)
 
         # apply normalized weight
         self.actor_5 = weight_norm(self.actor_5)

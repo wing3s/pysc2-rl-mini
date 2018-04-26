@@ -105,8 +105,8 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                 entropy = spatial_entropy + non_spatial_entropy
                 entropies.append(entropy)
 
-                spatial_action_ts = spatial_policy_vb.multinomial().data
-                non_spatial_action_ts = non_spatial_policy_vb.multinomial().data
+                spatial_action_ts = spatial_policy_vb.multinomial(1).data
+                non_spatial_action_ts = non_spatial_policy_vb.multinomial(1).data
                 sc2_action = game_intf.postprocess_action(
                     non_spatial_action_ts.cpu().numpy(),
                     spatial_action_ts.cpu().numpy())
