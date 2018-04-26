@@ -215,14 +215,15 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                             'min': np.array(rewards).min()
                         },
                         global_step=global_episode_counter_val))
+                cat_entropies = torch.cat(entropies, 0)
                 summary_queue.put(
                     Summary(
                         action='add_scalars',
                         tag='train/entropies/mean',
                         value1={
-                            'avg': np.array(entropies).mean(),
-                            'max': np.array(entropies).max(),
-                            'min': np.array(entropies).min()
+                            'avg': cat_entropies.mean(),
+                            'max': cat_entropies.max(),
+                            'min': cat_entropies.min()
                         },
                         global_step=global_episode_counter_val))
 
