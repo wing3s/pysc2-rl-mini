@@ -197,35 +197,27 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                 with open(counter_f_path, 'w') as counter_f:
                     counter_f.write(str(global_episode_counter_val))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/policy_loss',
+                    Summary(action='add_scalar', tag='train/loss/policy_loss',
                             value1=policy_loss_vb[0][0], global_step=global_episode_counter_val))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/value_loss',
+                    Summary(action='add_scalar', tag='train/loss/value_loss',
                             value1=value_loss_vb[0][0], global_step=global_episode_counter_val))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/total_loss',
+                    Summary(action='add_scalar', tag='train/loss/total_loss',
                             value1=loss_vb[0][0], global_step=global_episode_counter_val))
                 summary_queue.put(
-                    Summary(
-                        action='add_scalars',
-                        tag='train/rewards/sum',
-                        value1={
-                            'avg': np.array(rewards).sum(),
-                            'max': np.array(rewards).max(),
-                            'min': np.array(rewards).min()
-                        },
-                        global_step=global_episode_counter_val))
+                    Summary(action='add_scalar', tag='train/rewards/sum',
+                            value1=np.array(rewards).sum(), global_step=global_episode_counter_val))
                 cat_entropies = torch.cat(entropies, 0)
                 summary_queue.put(
-                    Summary(
-                        action='add_scalars',
-                        tag='train/entropies/mean',
-                        value1={
-                            'avg': cat_entropies.mean(),
-                            'max': cat_entropies.max(),
-                            'min': cat_entropies.min()
-                        },
-                        global_step=global_episode_counter_val))
+                    Summary(action='add_scalar', tag='train/entropies/mean',
+                            value1=cat_entropies.mean(), global_step=global_episode_counter_val))
+                summary_queue.put(
+                    Summary(action='add_scalar', tag='train/entropies/max',
+                            value1=cat_entropies.max(), global_step=global_episode_counter_val))
+                summary_queue.put(
+                    Summary(action='add_scalar', tag='train/entropies/min',
+                            value1=cat_entropies.min(), global_step=global_episode_counter_val))
 
             if summary_queue is not None and local_update_count % (summary_iters * 10) == 0:
                 global_episode_counter_val = global_episode_counter.value
