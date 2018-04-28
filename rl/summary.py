@@ -31,6 +31,7 @@ def writer_fn(args, msg_queue, init_counter_val):
                 summary_writer.add_graph(summary.value1, summary.value2)
         except Exception as e:
             print("Recreate SummaryWriter...", e)
+            summary_writer.close()
             summary_writer = SummaryWriter(summary_job_dir_path)
     summary_writer.close()
 

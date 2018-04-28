@@ -73,6 +73,8 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
 
             # reset observed variables
             entropies = []
+            spatial_entropies = []
+            non_spatial_entropies = []
             value_vbs = []
             spatial_policy_log_for_action_vbs = []
             non_spatial_policy_log_for_action_vbs = []
@@ -104,6 +106,8 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                     non_spatial_policy_vb).sum(1)  # avoid log(0)
                 entropy = spatial_entropy + non_spatial_entropy
                 entropies.append(entropy)
+                spatial_entropies.append(spatial_entropy)
+                non_spatial_entropies.append(non_spatial_entropy)
 
                 spatial_action_ts = spatial_policy_vb.multinomial(1).data
                 non_spatial_action_ts = non_spatial_policy_vb.multinomial(1).data
@@ -190,35 +194,66 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
             optimizer.step()
             local_update_count += 1
 
-            # log stats
+            # log scalar stats
             if summary_queue is not None and local_update_count % summary_iters == 0:
                 global_episode_counter_val = global_episode_counter.value
                 counter_f_path = '{0}/{1}/{2}/{3}/counter.log'.format(args.log_dir, args.mode, args.map_name, args.job_name)
                 with open(counter_f_path, 'w') as counter_f:
                     counter_f.write(str(global_episode_counter_val))
+                # loss
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/loss/policy_loss',
-                            value1=policy_loss_vb[0][0], global_step=global_episode_counter_val))
+                    Summary(action='add_scalar', tag='loss/policy',
+                            value1=policy_loss_vb.cpu()[0][0], global_step=global_episode_counter_val))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/loss/value_loss',
-                            value1=value_loss_vb[0][0], global_step=global_episode_counter_val))
+                    Summary(action='add_scalar', tag='loss/value',
+                            value1=value_loss_vb.cpu()[0][0], global_step=global_episode_counter_val))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/loss/total_loss',
-                            value1=loss_vb[0][0], global_step=global_episode_counter_val))
+                    Summary(action='add_scalar', tag='loss/total',
+                            value1=loss_vb.cpu()[0][0], global_step=global_episode_counter_val))
+                # reward
                 summary_queue.put(
                     Summary(action='add_scalar', tag='train/rewards/sum',
                             value1=np.array(rewards).sum(), global_step=global_episode_counter_val))
-                cat_entropies = torch.cat(entropies, 0)
+                # entropy
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/entropies/mean',
-                            value1=cat_entropies.mean(), global_step=global_episode_counter_val))
+                    Summary(action='add_scalar', tag='entropy/total/mean',
+                            value1=torch.cat(entropies, 0).cpu().mean(), global_step=global_episode_counter_val))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/entropies/max',
-                            value1=cat_entropies.max(), global_step=global_episode_counter_val))
+                    Summary(action='add_scalar', tag='entropy/spatial/mean',
+                            value1=torch.cat(spatial_entropies, 0).cpu().mean(), global_step=global_episode_counter_val))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='train/entropies/min',
-                            value1=cat_entropies.min(), global_step=global_episode_counter_val))
+                    Summary(action='add_scalar', tag='entropy/non_spatial/mean',
+                            value1=torch.cat(non_spatial_entropies, 0).cpu().mean(), global_step=global_episode_counter_val))
 
+                # value
+                summary_queue.put(
+                    Summary(action='add_scalar', tag='value/estimate/mean',
+                            value1=torch.cat(value_vbs, 0).cpu().mean(), global_step=global_episode_counter_val))
+                # action log probability
+                summary_queue.put(
+                    Summary(
+                        action='add_scalar',
+                        tag='action/selected_log_prob/total/mean',
+                        value1=torch.cat(spatial_policy_log_for_action_vbs +
+                                         non_spatial_policy_log_for_action_vbs,
+                                         0).cpu().mean(),
+                        global_step=global_episode_counter_val))
+                summary_queue.put(
+                    Summary(
+                        action='add_scalar',
+                        tag='action/selected_log_prob/spatial/mean',
+                        value1=torch.cat(spatial_policy_log_for_action_vbs,
+                                         0).cpu().mean(),
+                        global_step=global_episode_counter_val))
+                summary_queue.put(
+                    Summary(
+                        action='add_scalar',
+                        tag='action/selected_log_prob/non_spatial/mean',
+                        value1=torch.cat(non_spatial_policy_log_for_action_vbs,
+                                         0).cpu().mean(),
+                        global_step=global_episode_counter_val))
+
+            # log distribution stats
             if summary_queue is not None and local_update_count % (summary_iters * 10) == 0:
                 global_episode_counter_val = global_episode_counter.value
                 summary_queue.put(
