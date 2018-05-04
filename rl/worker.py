@@ -79,6 +79,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
             spatial_policy_log_for_action_vbs = []
             non_spatial_policy_log_for_action_vbs = []
             rewards = []
+            select_spatial_acts = []
 
             # rollout, step forward n steps
             for step in range(args.num_forward_steps):
@@ -93,6 +94,17 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                 # TODO: if args.lstm, do model training with lstm
                 value_vb, spatial_policy_vb, non_spatial_policy_vb, lstm_hidden_vb = model(
                     minimap_vb, screen_vb, info_vb, valid_action_vb, None)
+
+                # sample and select action
+                spatial_action_ts = spatial_policy_vb.multinomial(1).data
+                non_spatial_action_ts = non_spatial_policy_vb.multinomial(1).data
+                sc2_action = game_intf.postprocess_action(
+                    non_spatial_action_ts.cpu().numpy(),
+                    spatial_action_ts.cpu().numpy())
+
+                select_spatial_act = float(game_intf.is_non_spatial_action(sc2_action.function))
+                select_spatial_acts.append(select_spatial_act)
+
                 # Entropy of a probability distribution is the expected value of - log P(X),
                 # computed as sum(policy * -log(policy)) which is positive.
                 # Entropy is smaller when the probability distribution is more centered on one action
@@ -101,6 +113,7 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                 spatial_entropy = -(
                     torch.log(torch.clamp(spatial_policy_vb, min=1e-12)) *
                     spatial_policy_vb).sum(1)  # avoid log(0)
+                spatial_entropy *= select_spatial_act
                 non_spatial_entropy = -(
                     torch.log(torch.clamp(non_spatial_policy_vb, min=1e-12)) *
                     non_spatial_policy_vb).sum(1)  # avoid log(0)
@@ -109,15 +122,10 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                 spatial_entropies.append(spatial_entropy)
                 non_spatial_entropies.append(non_spatial_entropy)
 
-                spatial_action_ts = spatial_policy_vb.multinomial(1).data
-                non_spatial_action_ts = non_spatial_policy_vb.multinomial(1).data
-                sc2_action = game_intf.postprocess_action(
-                    non_spatial_action_ts.cpu().numpy(),
-                    spatial_action_ts.cpu().numpy())
                 # For a given state and action, compute the log of the policy at
                 # that action for that state.
                 spatial_policy_log_for_action_vb = torch.log(spatial_policy_vb.gather(1, Variable(spatial_action_ts)))
-                spatial_policy_log_for_action_vb *= float(game_intf.is_non_spatial_action(sc2_action.function))  # set to 0 if non-spatial action is chosen
+                spatial_policy_log_for_action_vb *= select_spatial_act  # set to 0 if non-spatial action is chosen
                 non_spatial_policy_log_for_action_vb = torch.log(non_spatial_policy_vb.gather(1, Variable(non_spatial_action_ts)))
 
                 state = env.step([sc2_action])[0]  # single player
@@ -219,8 +227,14 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                     Summary(action='add_scalar', tag='entropy/total/mean',
                             value1=torch.cat(entropies, 0).cpu().mean(), global_step=global_episode_counter_val))
                 summary_queue.put(
-                    Summary(action='add_scalar', tag='entropy/spatial/mean',
-                            value1=torch.cat(spatial_entropies, 0).cpu().mean(), global_step=global_episode_counter_val))
+                    Summary(
+                        action='add_scalar',
+                        tag='entropy/spatial/mean',
+                        value1=(
+                            torch.cat(spatial_entropies, 0).cpu().sum() /
+                            max(np.array(select_spatial_acts).sum(), 1e-12)
+                        ),
+                        global_step=global_episode_counter_val))
                 summary_queue.put(
                     Summary(action='add_scalar', tag='entropy/non_spatial/mean',
                             value1=torch.cat(non_spatial_entropies, 0).cpu().mean(), global_step=global_episode_counter_val))
@@ -242,8 +256,10 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                     Summary(
                         action='add_scalar',
                         tag='action/selected_log_prob/spatial/mean',
-                        value1=torch.cat(spatial_policy_log_for_action_vbs,
-                                         0).cpu().mean(),
+                        value1=(
+                            torch.cat(spatial_policy_log_for_action_vbs, 0).cpu().sum() /
+                            max(np.array(select_spatial_acts).sum(), 1e-12)
+                        ),
                         global_step=global_episode_counter_val))
                 summary_queue.put(
                     Summary(
@@ -251,6 +267,12 @@ def worker_fn(rank, args, shared_model, global_episode_counter, summary_queue, o
                         tag='action/selected_log_prob/non_spatial/mean',
                         value1=torch.cat(non_spatial_policy_log_for_action_vbs,
                                          0).cpu().mean(),
+                        global_step=global_episode_counter_val))
+                summary_queue.put(
+                    Summary(
+                        action='add_scalar',
+                        tag='action/selected_spatial_action/mean',
+                        value1=np.array(select_spatial_acts).mean(),
                         global_step=global_episode_counter_val))
 
             # log distribution stats
