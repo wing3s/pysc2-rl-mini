@@ -3,10 +3,10 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from envs import create_sc2_minigame_env
-from envs import GameInterfaceHandler
-from model import FullyConv
-from summary import Summary
+from rl.envs import create_sc2_minigame_env
+from rl.envs import GameInterfaceHandler
+from rl.model import FullyConv
+from rl.a3c.summary import Summary
 
 
 def monitor_fn(rank, args, shared_model, global_episode_counter, summary_queue):

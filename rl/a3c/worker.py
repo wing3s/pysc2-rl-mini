@@ -2,11 +2,11 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from envs import create_sc2_minigame_env
-from envs import GameInterfaceHandler
-from model import FullyConv
-from summary import Summary
-from utils.gpu import cuda
+from rl.envs import create_sc2_minigame_env
+from rl.envs import GameInterfaceHandler
+from rl.model import FullyConv
+from rl.a3c.summary import Summary
+from rl.utils.gpu import cuda
 
 
 def ensure_shared_grads(model, shared_model, gpu_id):
