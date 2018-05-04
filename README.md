@@ -17,14 +17,14 @@ Detail installation [steps](#installation).
 To train agent in "FindAndDefeatZerglings" mini game with 8 different worker threads:
 ```bash
 cd <project_path>
-python rl/main.py --map-name FindAndDefeatZerglings --num-processes 8
+python -m rl.main --map-name FindAndDefeatZerglings --num-processes 8
 ```
 Use `python rl/main.py --help` to see all available options.
 
 To train with GPU, use `--gpu_ids` option. Default is CPU only.
 ```bash
 # Use two GPUs for example
-python rl/main.py --map-name FindAndDefeatZerglings --gpu_ids 0 1 --num-processes 8 
+python -m rl.main --map-name FindAndDefeatZerglings --gpu_ids 0 1 --num-processes 8 
 ```
 
 ### Monitor
