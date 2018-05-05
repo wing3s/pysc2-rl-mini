@@ -25,11 +25,11 @@ def main(args):
         args.lstm)
 
     # load or reset model file and logs
-    counter_f_path = '{0}/{1}/{2}/{3}/counter.log'.format(args.log_dir, args.mode, args.map_name, args.job_name)
+    counter_f_path = os.path.join(args.log_dir, args.mode, args.map_name, args.job_name, "counter.log")
     init_episode_counter_val = 0
     if not args.reset:
         try:
-            model_f_path = '{0}/{1}/{2}/{3}.dat'.format(args.model_dir, args.mode, args.map_name, args.job_name)
+            model_f_path = os.path.join(args.model_dir, args.mode, args.map_name, args.job_name, "model.dat")
             shared_model.load_state_dict(torch.load(model_f_path))
             with open(counter_f_path, 'r') as counter_f:
                 init_episode_counter_val = int(counter_f.readline())
