@@ -9,7 +9,7 @@ from rl.optim import SharedAdam
 from rl.a3c.worker import worker_fn
 from rl.a3c.monitor import monitor_fn
 from rl.a3c.summary import writer_fn, Summary
-from rl.utils.sysprocess import kill_child_processes
+from rl.utils.sys_process import kill_child_processes
 
 
 def main(args):

@@ -2,7 +2,7 @@ import os
 import datetime
 import collections
 from tensorboardX import SummaryWriter
-from rl.utils.sysprocess import del_dir_contents, get_first_subdir
+from rl.utils.sys_process import del_dir_contents, get_first_subdir
 
 
 def writer_fn(args, msg_queue, init_counter_val):
