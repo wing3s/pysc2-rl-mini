@@ -4,7 +4,10 @@
 * [pytorch](https://github.com/pytorch/pytorch) v0.4.0
 * [StarCraft II (Linux)](https://github.com/Blizzard/s2client-proto#downloads) v.3.16.1
 * [tensorboardX (Tensorboard for Pytorch)](https://github.com/lanpa/tensorboard-pytorch) v1.0
-* [psutil](https://github.com/giampaolo/psutil)
+* common packages
+
+  * [psutil](https://github.com/giampaolo/psutil)
+  * [cloudpickle](https://github.com/cloudpipe/cloudpickle)
 
 Python3 is required to resolve [multiprocessing issue](https://github.com/ikostrikov/pytorch-a3c/issues/37).
 
