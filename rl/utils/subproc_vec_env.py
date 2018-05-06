@@ -24,8 +24,8 @@ def worker(worker_conn, mgr_conn, env_fn_wrapper):
             raise NotImplementedError
 
 
-class SubprocVecEnv(VecEnv):
-    def __init__(self, env_fns, spaces=None):
+class SubprocVecEnv(Object):
+    def __init__(self, env_fns):
         self.waiting = False
         self.closed = False
         nenvs = len(env_fns)
@@ -42,4 +42,23 @@ class SubprocVecEnv(VecEnv):
         for worker_conn in self.worker_conns:
             worker_conn.close()
 
-        super(SubprocVecEnv, self).__init__()
+    def step(self, actions):
+        for mgr_conn, action in zip(self.mgr_conns, actions):
+            mgr_conn.send(('step', action))
+        obs = [mgr_conn.recv() for mgr_conn in self.mgr_conns]
+        return obs
+
+    def reset(self):
+        for mgr_conn in self.mgr_conns:
+            mgr_conn.send(('reset', None))
+        obs = [mgr_conn.recv() for mgr_conn in self.mgr_conns]
+        return obs
+
+    def close(self):
+        if self.closed:
+            return
+        for mgr_conn in self.mgr_conns:
+            mgr_conn.send(('close', None))
+        for p in self.ps:
+            p.join()
+        self.closed = True
