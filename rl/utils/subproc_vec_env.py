@@ -7,7 +7,7 @@ from torch.multiprocessing import Process, Pipe
 def worker(worker_conn, mgr_conn, env_fn_wrapper):
     """ Remote worker to receive command and send back state"""
     mgr_conn.close()
-    env = env_func_wrapper.x()
+    env = env_fn_wrapper.x()
     while True:
         cmd, action = worker_conn.recv()
         if cmd == 'step':
@@ -76,4 +76,23 @@ class SubprocVecEnv(Object):
             mgr_conn.send(('close', None))
         for p in self.ps:
             p.join()
+        self.closed = True
+
+
+class DummyVecEnv(object):
+    """Single env version of SubprocVecEnv"""
+    def __init__(self, env_fn):
+        self.env = env_fn
+        self.closed = False
+
+    def step(self, actions):
+        assert len(actions) == 1
+        action = actions[0]
+        return [self.env.step([action])[0]]
+
+    def reset(self):
+        return [self.env.reset()[0]]
+
+    def close(self):
+        self.env.close()
         self.closed = True
