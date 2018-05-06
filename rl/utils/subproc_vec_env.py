@@ -9,15 +9,15 @@ def worker(worker_conn, mgr_conn, env_fn_wrapper):
     mgr_conn.close()
     env = env_func_wrapper.x()
     while True:
-        cmd, data = worker_conn.recv()
+        cmd, action = worker_conn.recv()
         if cmd == 'step':
-            ob, reward, done, info = env.step(data)
+            state = env.step([action])[0]
             if done:
-                ob = env.reset()
-            worker_conn.send((ob, reward, done, info))
+                state = env.reset()[0]
+            worker_conn.send(state)
         elif cmd == 'reset':
-            ob = env.reset()
-            worker_conn.send(ob)
+            state = env.reset()[0]
+            worker_conn.send(state)
         elif cmd == 'close':
             worker_conn.close()
             break
